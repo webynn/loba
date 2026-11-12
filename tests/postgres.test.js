@@ -22,5 +22,18 @@ test('PostgreSQL bootstrap, transactions, snapshots, conflicts and deletion', {s
     await store.initialize({});assert.equal((await store.lessons()).length,23,'Deleted seed lessons must not return on reboot');
     for(let i=0;i<10;i++)assert.ok(await store.loginAllowed('test-key'));assert.equal(await store.loginAllowed('test-key'),false);
     assert.equal((await store.activity()).length,4);
+    assert.equal((await store.admin('test@example.com')).approved,true,'Existing administrators retain access');
+    await store.register('new@example.com','temporary-signup-password');
+    const pending=await store.admin('new@example.com');
+    assert.equal(pending.approved,false);
+    await assert.rejects(store.register('new@example.com','different-signup-password'),{status:409});
+    const accounts=await store.pendingAccounts();
+    assert.equal(accounts.length,1); assert.equal(accounts[0].password_hash,undefined);
+    await store.createSession('pending-test-session',pending.id);
+    assert.equal(await store.session('pending-test-session'),undefined);
+    await store.approveAccount(pending.id,'test@example.com');
+    assert.equal((await store.session('pending-test-session')).email,'new@example.com');
+    assert.equal((await store.pendingAccounts()).length,0);
+    await assert.rejects(store.approveAccount(pending.id,'test@example.com'),{status:404});
   }finally{await pool.end()}
 });

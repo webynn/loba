@@ -37,6 +37,32 @@ function fakeStore() {
 }
 function authenticated(){const store=fakeStore();store.sessions.set(hashToken('test-session'),{id:'editor',email:'editor@example.com'});return{store,app:createApp(store,{origin,production:true}),headers:{origin,'content-type':'application/json',cookie:'__Host-loba_session=test-session'}}}
 
+test('public signup validates input, limits attempts and cannot grant access',async()=>{
+  const {store,app,headers}=authenticated();
+  let registered;
+  store.register=async(email,password)=>{registered={email,password}};
+  const data={email:' New@Example.com ',password:'temporary-test-password',approved:true};
+  const signup={url:'/api/auth/signup',method:'POST',headers:{origin,'content-type':'application/json'}};
+  assert.equal((await invoke(app,{...signup,data:{...data,password:'short'}})).status,400);
+  assert.equal((await invoke(app,{...signup,data:{...data,email:'bad'}})).status,400);
+  assert.equal((await invoke(app,{...signup,headers:{...signup.headers,origin:'https://attacker.example'},data})).status,403);
+  const result=await invoke(app,{...signup,data});
+  assert.equal(result.status,201); assert.equal(result.headers['set-cookie'],undefined);
+  assert.deepEqual(registered,{email:'new@example.com',password:data.password});
+  store.allowed=false; assert.equal((await invoke(app,{...signup,data})).status,429); store.allowed=true;
+  store.user={id:'pending',email:'new@example.com',approved:false,password_hash:await hashPassword(data.password)};
+  const login=await invoke(app,{url:'/api/auth/login',method:'POST',headers:signup.headers,data:{email:'new@example.com',password:data.password}});
+  assert.equal(login.status,403); assert.equal(login.headers['set-cookie'],undefined);
+  assert.equal((await invoke(app,{url:'/api/admin/accounts'})).status,401);
+  assert.equal((await invoke(app,{url:'/api/admin/accounts/12345678-1234-1234-1234-123456789012/approve',method:'POST',headers:signup.headers,data:{}})).status,401);
+  store.pendingAccounts=async()=>[{id:'pending',email:'new@example.com'}];
+  assert.equal((await invoke(app,{url:'/api/admin/accounts',headers})).data.accounts.length,1);
+  let approved=false;store.approveAccount=async()=>{approved=true};
+  assert.equal((await invoke(app,{url:'/api/admin/accounts/12345678-1234-1234-1234-123456789012/approve',method:'POST',headers,data:{}})).status,200);
+  assert.equal(approved,true);
+  assert.equal((await invoke(app,{url:'/signup'})).status,200);
+});
+
 test('password hashing is salted and rejects incorrect credentials',async()=>{
   const password='a-unique-long-test-password';const first=await hashPassword(password),second=await hashPassword(password);
   assert.notEqual(first,second);assert.ok(await verifyPassword(password,first));assert.equal(await verifyPassword('wrong',first),false);assert.equal(await verifyPassword(password,undefined),false);
