@@ -35,8 +35,24 @@ export class Store {
     return rows[0].attempts <= 10;
   }
   async admin(email) { return (await this.pool.query('SELECT * FROM studio_admins WHERE email=$1', [email])).rows[0]; }
+  async register(email, password) {
+    const {rows}=await this.pool.query('INSERT INTO studio_admins(id,email,password_hash,approved) VALUES($1,$2,$3,FALSE) ON CONFLICT(email) DO NOTHING RETURNING id', [randomUUID(),email,await hashPassword(password)]);
+    if(!rows.length) throw fail(409, 'An account already exists for this email. Sign in or contact your administrator.');
+  }
+  async pendingAccounts() { return (await this.pool.query('SELECT id,email,created_at FROM studio_admins WHERE approved=FALSE ORDER BY created_at')).rows; }
+  async approveAccount(id,email) {
+    const db=await this.pool.connect();
+    try {
+      await db.query('BEGIN');
+      const {rows}=await db.query('UPDATE studio_admins SET approved=TRUE WHERE id=$1 AND approved=FALSE RETURNING email',[id]);
+      if(!rows.length) throw fail(404,'Pending account not found.');
+      await db.query('INSERT INTO studio_activity(admin_email,action,lesson_title) VALUES($1,$2,$3)',[email,'account approved',rows[0].email]);
+      await db.query('COMMIT');
+    } catch(error) { await db.query('ROLLBACK'); throw error; }
+    finally { db.release(); }
+  }
   async createSession(tokenHash, adminId) { await this.pool.query("INSERT INTO studio_sessions(token_hash,admin_id,expires_at) VALUES($1,$2,now()+interval '12 hours')", [tokenHash, adminId]); }
-  async session(tokenHash) { return (await this.pool.query('SELECT a.id,a.email FROM studio_sessions s JOIN studio_admins a ON a.id=s.admin_id WHERE s.token_hash=$1 AND s.expires_at>now()', [tokenHash])).rows[0]; }
+  async session(tokenHash) { return (await this.pool.query('SELECT a.id,a.email FROM studio_sessions s JOIN studio_admins a ON a.id=s.admin_id WHERE s.token_hash=$1 AND s.expires_at>now() AND a.approved=TRUE', [tokenHash])).rows[0]; }
   async logout(tokenHash) { await this.pool.query('DELETE FROM studio_sessions WHERE token_hash=$1', [tokenHash]); }
   async lessons() { return (await this.pool.query("SELECT * FROM studio_lessons ORDER BY content->>'language', (content->>'position')::int, id")).rows; }
   async published() { return (await this.pool.query("SELECT id,published AS content,published_version AS version,published_at FROM studio_lessons WHERE published IS NOT NULL ORDER BY published->>'language', (published->>'position')::int, id")).rows; }

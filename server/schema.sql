@@ -35,3 +35,4 @@ CREATE TABLE IF NOT EXISTS studio_migrations (
   applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS studio_sessions_expiry ON studio_sessions(expires_at);
+ALTER TABLE studio_admins ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT TRUE;

@@ -28,6 +28,17 @@ export function createApp(store, {origin, production = false}) {
           if (req.headers.origin !== origin) throw fail(403, 'Request origin is not allowed.');
           if (!(req.headers['content-type'] || '').startsWith('application/json')) throw fail(415, 'Use application/json.');
         }
+        if (path === '/api/auth/signup' && method === 'POST') {
+          const input=await body(req);
+          if (!input || typeof input.email !== 'string' || input.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim()) || typeof input.password !== 'string' || input.password.length < 14 || input.password.length > 256) throw fail(400,'Enter a valid email and a password of 14–256 characters.');
+          const email=input.email.trim().toLowerCase();
+          const address=production ? (String(req.headers['x-forwarded-for'] || '').split(',').at(-1).trim() || req.socket.remoteAddress) : req.socket.remoteAddress;
+          const allowed=await store.loginAllowed(hashToken(`signup-address:${address}`));
+          const emailAllowed=await store.loginAllowed(hashToken(`signup-email:${email}`));
+          if(!allowed || !emailAllowed) { res.setHeader('Retry-After','900'); throw fail(429,'Too many sign-up attempts. Try again in 15 minutes.'); }
+          await store.register(email,input.password);
+          return json(201,{message:'Account created. An administrator must approve your access before you can manage lessons.'});
+        }
         if (path === '/api/auth/login' && method === 'POST') {
           const input = await body(req);
           if (!input || typeof input.email !== 'string' || input.email.length > 254 || typeof input.password !== 'string' || input.password.length > 256) throw fail(400, 'Enter your email and password.');
@@ -40,6 +51,7 @@ export function createApp(store, {origin, production = false}) {
           const admin = await store.admin(email);
           const valid = await verifyPassword(input.password, admin?.password_hash);
           if (!admin || !valid) throw fail(401, 'Email or password is incorrect.');
+          if (admin.approved === false) throw fail(403, 'Your account is awaiting administrator approval.');
           const token = randomBytes(32).toString('hex');
           await store.createSession(hashToken(token), admin.id);
           res.setHeader('Set-Cookie',cookie(token,43200));
@@ -51,6 +63,9 @@ export function createApp(store, {origin, production = false}) {
         if (!user) throw fail(401, 'Sign in to continue.');
         if (path === '/api/auth/me' && method === 'GET') return json(200,{user});
         if (path === '/api/auth/logout' && method === 'POST') { await store.logout(tokenHash); res.setHeader('Set-Cookie',cookie('',0)); return json(200,{ok:true}); }
+        if (path === '/api/admin/accounts' && method === 'GET') return json(200,{accounts:await store.pendingAccounts()});
+        const approval=path.match(/^\/api\/admin\/accounts\/([0-9a-f-]{36})\/approve$/i);
+        if (approval && method === 'POST') { await store.approveAccount(approval[1],user.email); return json(200,{ok:true}); }
         if (path === '/api/admin/lessons' && method === 'GET') return json(200,{lessons:await store.lessons(),activity:await store.activity()});
         if (path === '/api/admin/lessons' && method === 'POST') {
           const input = await body(req);
@@ -68,7 +83,7 @@ export function createApp(store, {origin, production = false}) {
       }
       if (method !== 'GET' && method !== 'HEAD') throw fail(405, 'Method not allowed.');
       const files = {'/':'../admin/index.html','/admin':'../admin/index.html','/admin/':'../admin/index.html','/admin/app.js':'../admin/app.js','/admin/style.css':'../admin/style.css','/learn':'../index.html','/learn/':'../index.html','/privacy.html':'../privacy.html','/manifest.webmanifest':'../manifest.webmanifest','/icons/icon-192.png':'../icons/icon-192.png','/icons/icon-512.png':'../icons/icon-512.png','/icons/apple-touch-icon.png':'../icons/apple-touch-icon.png'};
-      const file = files[path]; if (!file) throw fail(404,'Page not found.');
+      const file = path === '/signup' || path === '/signup/' ? '../admin/index.html' : files[path]; if (!file) throw fail(404,'Page not found.');
       if (!path.startsWith('/learn')) res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
       const ext = file.split('.').at(-1);
       const mime = {html:'text/html',js:'text/javascript',css:'text/css',png:'image/png',webmanifest:'application/manifest+json'}[ext];
