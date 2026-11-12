@@ -1,0 +1,16 @@
+{
+  "name": "loba-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server/index.js",
+    "dev": "node --env-file-if-exists=.env --watch server/index.js",
+    "seed:extract": "node scripts/extract-lessons.js",
+    "admin:reset": "node --env-file-if-exists=.env scripts/reset-password.js",
+    "test": "node --test tests/*.test.js",
+    "check": "node --check server/index.js && node --check server/app.js && node --check server/store.js && node --check admin/app.js"
+  },
+  "dependencies": { "pg": "8.16.3" }
+}
