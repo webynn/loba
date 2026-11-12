@@ -33,7 +33,9 @@ First startup applies the schema and imports the existing curriculum as publishe
 - PostgreSQL service: `2003fa92-b140-44f8-85a7-407403c576e9`, observed **Online** with a persistent volume.
 - Application service: **loba-web**, ID `5c877df0-da82-4067-9cda-0c71e2d1221f`, created but **offline pending source upload**.
 - Applied app settings: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `NODE_ENV=production`, `ADMIN_EMAIL=chris@webynn.com`, health check `/health`.
-- No admin password, public domain, live application deployment, or database schema migration has been completed yet.
+- Public address reserved: `https://loba-web-production.up.railway.app` (the application is not deployed yet). Explicit `PORT=3000` and `APP_ORIGIN` are configured to match.
+- Source fork created: [webynn/loba](https://github.com/webynn/loba). Studio source, curriculum, maintenance scripts, tests and CI are committed there. Railway's source is set to this repository's `main` branch, staged for the first deployment.
+- No admin password, live application deployment, or database schema migration has been completed yet.
 
 Open [the prepared Railway project](https://railway.com/project/a04780c7-5f54-4ef0-85bb-924e1c0ec75c).
 
@@ -51,7 +53,7 @@ To finish from your own terminal without waiting for GitHub repository access:
 
 4. Verify `/health`, sign in, and run the browser acceptance checks below.
 
-The Railway GitHub picker currently does not list `loba`. For automatic GitHub deployments, grant Railway access to the intended repository and push the new Studio files, then connect that repository to this existing service. Do not create another project or database.
+The Railway account is now connected to GitHub as `webynn`, using its existing Railway App installation. Source changes are staged for the first deployment; enter the initial `ADMIN_PASSWORD` yourself in Railway, then apply the staged changes. Do not create another project or database. The local checkout still has `ChristopheMbadu/loba` as its origin because this session cannot change Git metadata; reconcile the browser commits before making future local pushes.
 
 ### Generic setup for another environment
 
@@ -80,6 +82,8 @@ The first successful startup stores the editor password hash in the database. Yo
 ## Reset the editor password
 
 Run `npm run admin:reset` in a trusted local shell with `.env` pointing to the intended database. The script reads the email and new password interactively (password input is hidden), updates the existing editor, and revokes all their sessions. It will not create an account. Never place a real password in a command argument or commit it.
+
+To add another administrator, run `npm run admin:reset -- --create` in the application's Railway Console (or a trusted shell connected to the intended database). Enter the new email, then enter and confirm a password of 14–256 characters. The create mode inserts a separate administrator and refuses duplicate emails; it does not replace existing accounts. All administrator accounts currently have the same lesson-management permissions; there is no separate owner role.
 
 ## Editorial workflow
 
@@ -121,7 +125,14 @@ Lesson IDs stay stable when titles or positions change. Draft edits do not alter
 - `npm run check`: JavaScript syntax.
 - `npm test`: password handling, request protections, admin routing, curriculum validation and public/draft API contracts. HTTP tests inject an in-memory test double and don't need network access; they do not validate PostgreSQL queries.
 - `TEST_DATABASE_URL=postgresql://... npm test`: also runs the actual PostgreSQL integration test. Use a **dedicated empty disposable database**. It creates test tables and data and leaves them in place for inspection.
+- `.github/workflows/studio.yml` runs these checks on GitHub with an isolated PostgreSQL 16 service, including the database integration test. Its password is disposable CI-only test data, not a production credential.
 
 Browser acceptance: sign in; filter each language; create a draft; add words and sentences; save and reload; publish; inspect `/api/v1/lessons`; save a private edit and verify the public version is unchanged; unpublish and delete the test lesson; sign out and confirm admin endpoints reject access.
 
-Deployment, browser testing and the PostgreSQL integration test still need an environment with package-registry access, a running database, and permission to listen on a local port or deploy to Railway.
+GitHub Actions run [43279382143](https://github.com/webynn/loba/actions/runs/43279382143) passed all 11 tests, with zero skips, including the real PostgreSQL integration test. The live dashboard still needs first deployment and browser acceptance testing. Local package installation and local server preview were blocked by this session's network and port restrictions.
+
+## Public registration and dashboard UI
+
+The dashboard uses the MIT-licensed Tabler UI kit, pinned to @tabler/core 1.7.5 and served locally at /admin/tabler.css. Source and license: https://github.com/tabler/tabler . Package license notices remain in the installed dependency.
+
+Anyone may register at /signup with an email and a 14–256 character password. Public registrations are stored with approved=false and receive no session. Approved administrators use Accounts to grant workspace access; approval grants lesson management and account-approval permissions. Email ownership is not verified, so administrators must independently recognize the person before approving. Existing administrators keep access. The /learn application still uses its original authentication and is separate from Studio registration.
