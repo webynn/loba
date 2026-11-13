@@ -136,3 +136,24 @@ test('dashboard element references match the HTML',async()=>{
   const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length,'Duplicate IDs');
   for(const match of js.matchAll(/\$\('([^']+)'\)/g))assert.ok(ids.includes(match[1]),`Missing #${match[1]}`);
 });
+
+test('learner assets resolve from both learner URLs without exposing other files',async()=>{
+  const app=createApp(fakeStore(),{origin,production:true});
+  for(const prefix of ['/','/learn/']){
+    for(const [name,mime] of [['learner.css','text/css'],['learner.js','text/javascript'],['lottie-parrot.json','application/json'],['lottie-celebrate.json','application/json']]){
+      const r=await invoke(app,{url:prefix+name});assert.equal(r.status,200);assert.ok(r.headers['content-type'].startsWith(mime));
+    }
+  }
+  for(const url of ['/learn/server/store.js','/learn/.env','/learn/package.json'])assert.equal((await invoke(app,{url})).status,404);
+});
+
+test('learner scripts parse and animations need no remote images',async()=>{
+  const {Script}=await import('node:vm');
+  const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  for(const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g))assert.doesNotThrow(()=>new Script(m[1]));
+  for(const file of ['lottie-parrot.json','lottie-celebrate.json']){
+    const animation=JSON.parse(await readFile(new URL('../'+file,import.meta.url)));
+    assert.ok(animation.layers.length>0);assert.ok(animation.fr>0);
+    assert.ok(animation.assets.every(a=>!a.p));
+  }
+});
