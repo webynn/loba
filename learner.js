@@ -24,12 +24,13 @@
 
   function mount(el, file, loop=true) {
     if(!window.lottie || animations.has(el))return;
+    el.classList.remove('animation-loaded');
     const fallback=el.innerHTML;
     const canvas=document.createElement('div');canvas.className='animation-canvas';el.append(canvas);
     const anim=lottie.loadAnimation({container:canvas,renderer:'svg',loop,autoplay:false,path:file});
     const record={anim,visible:false,loop};animations.set(el,record);
     anim.addEventListener('DOMLoaded',()=>{el.classList.add('animation-loaded');if(reduced.matches)anim.goToAndStop(loop?0:Math.min(90,anim.totalFrames-1),true);else if(record.visible&&!document.hidden)anim.play()});
-    anim.addEventListener('data_failed',()=>{anim.destroy();animations.delete(el);el.innerHTML=fallback});
+    anim.addEventListener('data_failed',()=>{anim.destroy();animations.delete(el);el.classList.remove('animation-loaded');el.innerHTML=fallback});
     observer.observe(el);
   }
   const observer=new IntersectionObserver(entries=>entries.forEach(e=>{
@@ -71,6 +72,7 @@
     document.querySelectorAll('#path .nodes').forEach((n,i)=>{if(!n.querySelector('.path-marker')){const deco=document.createElement('div');deco.className='path-marker';deco.setAttribute('aria-hidden','true');deco.textContent=['🌴','🪘','🌿','☀️'][i%4];n.append(deco)}});
   }
   const originalRender=render;render=function(){originalRender();enhance()};
+  const originalExercise=renderEx;renderEx=function(){originalExercise();enhance()};
   const originalOnboarding=renderOnb;renderOnb=function(){originalOnboarding();enhance()};
   document.addEventListener('loba:screen',enhance);
   document.addEventListener('loba:celebrate',()=>{const el=$('eIcon');for(const [node,r] of animations)if(node===el){observer.unobserve(node);r.anim.destroy();animations.delete(node)}el.innerHTML='<span class="animation-fallback">🎉</span>';mount(el,'lottie-celebrate.json',false)});
