@@ -1,36 +1,57 @@
-# Loba learner portal
+# Loba learner app (`learn/`)
 
-The redesigned `/learn` keeps the existing Lingala/Swahili engine, placement,
-practice, stories, quests and progress key (`loba-state-v4`). The administration
-portal is unchanged. The lesson engine still uses its bundled curriculum;
-connecting it to Studio's published snapshots is separate backend work.
+The Duolingo-style learner app served at `/learn`. React + TypeScript, built with Vite.
 
-`learner.css` provides the responsive shell, lesson path, illustrated landscape,
-exercise layouts and reduced-motion treatment. `learner.js` adds progress-aware
-navigation, an XP goal card, local Lottie playback and a persistent sound toggle.
-The original Web Audio cues now use softer sine tones. Sounds only follow user
-interactions; speech pronunciation remains separately configurable.
+- **TanStack Router**: file-based routes in `learn/src/routes`, validated search params
+  (`/lesson/$unitId?n=`, `/session?mode=`), loaders that guard locked lessons.
+- **TanStack Query**: fetches the curriculum from Studio's published API
+  (`/api/v1/lessons`). Offline, or before Studio is deployed, it falls back to the
+  curriculum bundled from `data/lessons.json`.
+- **TanStack Store**: game state (XP, hearts, streak, progress, spaced repetition),
+  persisted to `localStorage` under `loba-learn-v1`. Saves from the previous app
+  (`loba-state-v4`) are migrated on first load.
 
-Animations pause when hidden or off-screen; reduced-motion uses a still frame.
-Disconnected renderers are destroyed. Failed animation loads retain emoji
-fallbacks. Neither animation file makes external requests or contains image assets.
+## Layout
 
-## Animation credits
+| Path | What |
+| --- | --- |
+| `src/game/` | Pure game logic: rules (hearts, streak, freezes, quests, shop, chests, SRS), exercise generation, grading, session reducer, save migration. Unit-tested in `rules.test.ts`. |
+| `src/content/` | Curriculum types, validation and fetching. |
+| `src/components/` | UI, including `LessonPlayer` and one component per exercise type. |
+| `src/routes/` | Screens: path, practice, quests, shop, profile, onboarding, lesson, practice session. |
+| `src/i18n/` | French and English UI strings. |
+| `src/styles/app.css` | Design tokens and all styles, light and dark. |
 
-- **Parrot**, Summer kc: https://lottiefiles.com/free-animation/parrot-ApC1HPHYZP
-  Downloaded from LottieFiles, November 13, 2026. Lottie Simple License:
-  https://lottiefiles.com/page/license
-- **Success Checkmark with Confetti**, downloaded from the owner's LottieFiles
-  Drafts: https://app.lottiefiles.com/animation/94568ffc-ca6c-4e5c-ae6d-b62250b52475
-- **lottie-web 5.13.0**, MIT: https://github.com/airbnb/lottie-web
-  The light SVG player is served locally from the pinned npm dependency.
+Each unit has 4 lessons that ramp up (meet half the words → the other half → mix with
+sentences → recall by typing) followed by a chest. Exercise types: meaning, recall,
+listening, match pairs, word-bank sentences, typed answers.
 
-No paid animation subscription or external animation CDN is required at runtime.
-LottieFiles' Platform MCP endpoint is https://mcp.lottiefiles.com/mcp; this session
-could not attach a new MCP server, so the signed-in browser download flow was used.
+There is no synthetic voice. Pronunciation plays only the recordings teachers attach to
+words in Studio; a word without one has no speaker button, and listening exercises are
+only generated for recorded words.
 
-## Verification
+## Commands
 
-`npm run check` and `npm test`. Database integration requires TEST_DATABASE_URL
-and runs in GitHub Actions. Production static routes support both `/learn` and
-`/learn/`. Static files stay explicitly allowlisted.
+```sh
+npm run build:learn          # from the repo root: install + build into learn/dist
+npm run dev:learn            # Vite dev server on :5173/learn/ (proxies /api to :3000)
+npm run test:learn           # game logic tests
+```
+
+The Node server serves `learn/dist` at `/learn` (SPA fallback, hashed assets cached
+immutably, strict CSP). The Docker image builds it in a separate stage.
+
+## Not yet ported from the legacy app
+
+The previous single-file app (root `index.html`, still the GitHub Pages demo) also had
+WhatsApp-style situations, stories, the sentence machine, speaking exercises, leagues,
+friends, Supabase accounts/cloud sync, push reminders and donations. Those need content
+in Studio or learner accounts on the server first.
+
+## Art and credits
+
+The mascot (Loba, an African grey parrot), the icon set and the path scenery are original
+SVG drawn in `src/components/Loba.tsx` and `src/components/Art.tsx`, animated with CSS.
+No emoji or third-party illustrations are used in the UI.
+
+- **Fredoka** and **Nunito**, SIL Open Font License, self-hosted via @fontsource-variable.

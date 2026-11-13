@@ -9,9 +9,12 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server/index.js",
     "dev": "node --env-file-if-exists=.env --watch server/index.js",
+    "dev:learn": "npm run dev --prefix learn",
+    "build:learn": "npm ci --prefix learn --no-audit --no-fund && npm run build --prefix learn",
     "seed:extract": "node scripts/extract-lessons.js",
     "admin:reset": "node --env-file-if-exists=.env scripts/reset-password.js",
     "test": "node --test tests/*.test.js",
+    "test:learn": "npm test --prefix learn",
     "check": "node --check server/index.js && node --check server/app.js && node --check server/store.js && node --check admin/app.js && node --check learner.js"
   },
   "dependencies": {

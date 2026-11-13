@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
 import { readFile } from 'node:fs/promises';
 import { createApp } from '../server/app.js';
-import { hashPassword, verifyPassword, hashToken, validateLesson, fail } from '../server/security.js';
+import { hashPassword, verifyPassword, hashToken, validateLesson, sniffAudio, fail } from '../server/security.js';
 
 const lesson={language:'ln',position:1,title:'Mbote !',titleEn:'Greetings',icon:'👋',tip:'Welcome',words:[{term:'Mbote',fr:'Bonjour',en:'Hello'}],sentences:[{fr:'Je vais bien',en:'I am well',answer:'Nazali malamu',distractors:['yo']}]};
 const origin='https://studio.example.com';
@@ -21,6 +21,7 @@ function fakeStore() {
     lessonsMap:lessons,sessions,allowed:true,
     async healthy(){},async loginAllowed(){return this.allowed},async admin(){return this.user},
     async createSession(hash,id){sessions.set(hash,{id,email:this.user.email})},async session(hash){return sessions.get(hash)},async logout(hash){sessions.delete(hash)},
+    audioMap:new Map(),async saveAudio({id,mime,data}){this.audioMap.set(id,{mime,data})},async audio(id){return this.audioMap.get(id)},
     async lessons(){return [...lessons.values()]},async activity(){return activity},
     async published(){return [...lessons.values()].filter(r=>r.published).map(r=>({id:r.id,content:r.published,version:r.published_version}))},
     async mutate({id,content,action,version}){
@@ -137,14 +138,23 @@ test('dashboard element references match the HTML',async()=>{
   for(const match of js.matchAll(/\$\('([^']+)'\)/g))assert.ok(ids.includes(match[1]),`Missing #${match[1]}`);
 });
 
-test('learner assets resolve from both learner URLs without exposing other files',async()=>{
-  const app=createApp(fakeStore(),{origin,production:true});
-  for(const prefix of ['/','/learn/']){
-    for(const [name,mime] of [['learner.css','text/css'],['learner.js','text/javascript'],['lottie-parrot.json','application/json'],['lottie-celebrate.json','application/json']]){
-      const r=await invoke(app,{url:prefix+name});assert.equal(r.status,200);assert.ok(r.headers['content-type'].startsWith(mime));
-    }
+test('learner app is served as a single-page app from /learn without exposing other files',async()=>{
+  const {mkdtemp,mkdir,writeFile}=await import('node:fs/promises');const {tmpdir}=await import('node:os');const {join}=await import('node:path');const {pathToFileURL}=await import('node:url');
+  const dir=await mkdtemp(join(tmpdir(),'loba-learn-'));await mkdir(join(dir,'assets'));
+  await writeFile(join(dir,'index.html'),'<!doctype html><div id="root"></div>');await writeFile(join(dir,'assets','index-AbC123.js'),'console.log(1)');
+  await writeFile(join(dir,'assets','font-x.woff2'),'woff');await writeFile(join(dir,'manifest.webmanifest'),'{}');await writeFile(join(dir,'secret.txt'),'no');
+  const app=createApp(fakeStore(),{origin,production:true,learnDir:pathToFileURL(dir+'/')});
+  for(const url of ['/learn','/learn/','/learn/practice','/learn/lesson/ln-mbote?n=2']){
+    const r=await invoke(app,{url});assert.equal(r.status,200,url);assert.ok(r.headers['content-type'].startsWith('text/html'));assert.match(r.raw,/id="root"/);
+    assert.match(r.headers['content-security-policy'],/script-src 'self';/);assert.equal(r.headers['cache-control'],'no-store');
   }
-  for(const url of ['/learn/server/store.js','/learn/.env','/learn/package.json'])assert.equal((await invoke(app,{url})).status,404);
+  const js=await invoke(app,{url:'/learn/assets/index-AbC123.js'});assert.equal(js.status,200);assert.ok(js.headers['content-type'].startsWith('text/javascript'));assert.match(js.headers['cache-control'],/immutable/);
+  assert.equal((await invoke(app,{url:'/learn/assets/font-x.woff2'})).headers['content-type'],'font/woff2');
+  assert.equal((await invoke(app,{url:'/learn/manifest.webmanifest'})).status,200);
+  for(const url of ['/learn/secret.txt','/learn/assets/missing.js','/learn/assets/.hidden.js','/learn/assets/x.txt','/learn/assets/%2e%2e%2fsecret.txt','/learn/../server/store.js','/learn/server/store.js','/learn/.env','/learn/package.json','/learner.js','/lottie-parrot.json'])
+    assert.equal((await invoke(app,{url})).status,404,url);
+  const unbuilt=createApp(fakeStore(),{origin,production:true,learnDir:pathToFileURL(join(dir,'missing')+'/')});
+  assert.equal((await invoke(unbuilt,{url:'/learn'})).status,503);
 });
 
 test('learner scripts parse and animations need no remote images',async()=>{
@@ -156,4 +166,26 @@ test('learner scripts parse and animations need no remote images',async()=>{
     assert.ok(animation.layers.length>0);assert.ok(animation.fr>0);
     assert.ok(animation.assets.every(a=>!a.p));
   }
+});
+
+test('teachers upload recordings that learners can stream; other content is refused',async()=>{
+  const {app,headers}=authenticated();
+  const webm=Buffer.concat([Buffer.from([0x1a,0x45,0xdf,0xa3]),Buffer.alloc(60,7)]);
+  const upload=(raw,extra={})=>invoke(app,{url:'/api/admin/audio',method:'POST',headers:{...headers,'content-type':'audio/webm',...extra},raw});
+  const made=await upload(webm);assert.equal(made.status,201);assert.match(made.data.id,/^[0-9a-f-]{36}$/);
+  assert.equal((await upload(Buffer.from('<script>alert(1)</script> not audio'))).status,415);
+  assert.equal((await upload(Buffer.alloc(1_600_000,1))).status,413);
+  assert.equal((await upload(webm,{cookie:''})).status,401);
+  assert.equal((await upload(webm,{origin:'https://evil.example'})).status,403);
+  const full=await invoke(app,{url:`/api/v1/audio/${made.data.id}`});
+  assert.equal(full.status,200);assert.equal(full.headers['content-type'],'audio/webm');assert.match(full.headers['cache-control'],/immutable/);assert.equal(full.headers['x-content-type-options'],'nosniff');
+  const part=await invoke(app,{url:`/api/v1/audio/${made.data.id}`,headers:{range:'bytes=0-9'}});
+  assert.equal(part.status,206);assert.equal(part.headers['content-range'],'bytes 0-9/64');assert.equal(part.headers['content-length'],10);
+  assert.equal((await invoke(app,{url:`/api/v1/audio/${made.data.id}`,headers:{range:'bytes=900-'}})).status,416);
+  assert.equal((await invoke(app,{url:'/api/v1/audio/00000000-0000-4000-8000-000000000000'})).status,404);
+  const saved=validateLesson({...lesson,words:[{term:'Mbote',fr:'Bonjour',audio:made.data.id},{term:'Te',fr:'Non',audio:''}]});
+  assert.equal(saved.words[0].audio,made.data.id);assert.ok(!('audio' in saved.words[1]));
+  assert.throws(()=>validateLesson({...lesson,words:[{term:'Mbote',fr:'Bonjour',audio:'../../etc/passwd'}]}),{status:400});
+  assert.equal(sniffAudio(Buffer.from('ID3\x04\x00\x00\x00\x00\x00\x00\x00\x00')),'audio/mpeg');
+  assert.equal(sniffAudio(Buffer.from('\x00\x00\x00\x20ftypM4A \x00\x00')),'audio/mp4');
 });

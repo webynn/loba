@@ -9,7 +9,7 @@ The server uses Node.js 22+ and PostgreSQL. The interface is plain HTML, CSS and
 - `/` and `/admin`: private lesson-management dashboard.
 - `/api/admin/*`: authenticated editorial API.
 - `/api/v1/lessons`: public, versioned JSON API exposing **only published snapshots** for a future SwiftUI app.
-- `/learn`: the **original** learner app, still using its bundled lessons and existing Supabase account/progress system. Studio edits do not update that legacy app. Wiring a learner client to the new curriculum API is a separate next step.
+- `/learn`: the learner app (`learn/`, see [LEARNER.md](LEARNER.md)). It reads published lessons from `/api/v1/lessons`, so publishing in Studio updates what learners see. Progress is stored on the learner's device.
 - The import contains all 24 vocabulary/sentence units (12 per language). Dialogue scenarios, stories, gamification, learner accounts and progress are not migrated into Studio yet.
 
 There is no public admin registration. On first startup, the server creates one editor from `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Passwords use salted scrypt hashes. Sessions are random, stored as hashes in PostgreSQL, and expire after 12 hours. Production cookies are secure, HTTP-only and same-site. Mutations require the exact configured origin. Login attempts are limited in the database.
@@ -92,6 +92,12 @@ Creating and saving a lesson produces a draft. On an already published lesson, *
 Concurrent edits use revision checks: an out-of-date editor receives a conflict instead of overwriting someone else's work. Close and reopen the editor after refreshing to load the latest revision; copy any unsaved work before discarding it.
 
 Teaching notes are plain text. English meanings are editable; missing translations remain blank rather than being invented. The preview shows vocabulary and sentence answers, not the full legacy learner game.
+
+## Word recordings
+
+In the lesson editor, each vocabulary entry has **Record** (microphone, up to 15 seconds) and **Upload audio** (MP3, M4A, WAV, OGG or WebM, up to 1.5 MB). Recordings are stored in PostgreSQL (`studio_audio`), attached to the word as an `audio` id, and follow the same draft/publish flow as the rest of the lesson. Learners stream them from the public `GET /api/v1/audio/:id`. The file type is detected from its content, not the upload's declared type. Uploads never attached to a lesson are deleted at startup after 7 days.
+
+Browser-made recordings are WebM (Chrome, Firefox) or MP4 (Safari); older Safari versions cannot play WebM, so MP3 or M4A uploads are the most widely playable.
 
 ## Published API for the future SwiftUI client
 

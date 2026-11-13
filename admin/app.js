@@ -64,10 +64,38 @@ function render() {
   $('lessons-table').innerHTML=table(filtered);
   $('language-filter').value=state.language;
 }
+let recorder=null, player=null;
+async function uploadAudio(blob) {
+  if(blob.size>1500000) throw new Error('This recording is too large. Keep it under 1.5 MB.');
+  const response=await fetch('/api/admin/audio',{method:'POST',credentials:'same-origin',headers:{'Content-Type':blob.type||'application/octet-stream'},body:blob});
+  const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.error||'Upload failed.'); return data.id;
+}
+function audioControls(row) {
+  const input=row.querySelector('[data-field="audio"]'), status=row.querySelector('.audio-status');
+  const [record,upload,play,clear]=['record','upload','play','clear'].map(name=>row.querySelector(`.audio-${name}`)), file=row.querySelector('.audio-file');
+  const paint=message=>{const has=!!input.value;play.hidden=clear.hidden=!has;status.textContent=message??(has?'Recording attached':'No recording yet');status.classList.toggle('has-audio',has&&!message)};
+  const attach=async blob=>{paint('Uploading…');try{input.value=await uploadAudio(blob);state.dirty=true;paint()}catch(error){paint(error.message)}};
+  record.onclick=async()=>{
+    if(recorder){recorder.stop();return}
+    if(!navigator.mediaDevices||!window.MediaRecorder){paint('Recording is not supported in this browser. Upload a file instead.');return}
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true}); const chunks=[]; const active=recorder=new MediaRecorder(stream);
+      active.ondataavailable=event=>chunks.push(event.data);
+      active.onstop=()=>{stream.getTracks().forEach(track=>track.stop());recorder=null;record.textContent='● Record';record.classList.remove('recording');attach(new Blob(chunks,{type:active.mimeType}))};
+      active.start(); record.textContent='■ Stop'; record.classList.add('recording'); paint('Recording… say the word clearly');
+      setTimeout(()=>{if(recorder===active)active.stop()},15000);
+    }catch{paint('Microphone access was blocked. Allow it, or upload a file.')}
+  };
+  upload.onclick=()=>file.click();
+  file.onchange=()=>{if(file.files[0])attach(file.files[0]);file.value=''};
+  play.onclick=()=>{player?.pause();player=new Audio(`/api/v1/audio/${input.value}`);player.play().catch(()=>paint('This recording could not be played.'))};
+  clear.onclick=()=>{input.value='';state.dirty=true;paint()};
+  paint();
+}
 function wordRow(word={term:'',fr:'',en:''}) {
   const row=document.createElement('div'); row.className='vocab-row';
-  row.innerHTML=`<label>WORD / PHRASE<input class="form-control" data-field="term" value="${esc(word.term)}" maxlength="300" required placeholder="Mbote"></label><label>FRENCH<input class="form-control" data-field="fr" value="${esc(word.fr)}" maxlength="300" required placeholder="Bonjour"></label><label>ENGLISH<input class="form-control" data-field="en" value="${esc(word.en)}" maxlength="300" placeholder="Hello"></label><button type="button" class="icon-button btn btn-icon btn-ghost-secondary remove-row" aria-label="Remove vocabulary entry">×</button>`;
-  $('word-rows').append(row);
+  row.innerHTML=`<label>WORD / PHRASE<input class="form-control" data-field="term" value="${esc(word.term)}" maxlength="300" required placeholder="Mbote"></label><label>FRENCH<input class="form-control" data-field="fr" value="${esc(word.fr)}" maxlength="300" required placeholder="Bonjour"></label><label>ENGLISH<input class="form-control" data-field="en" value="${esc(word.en)}" maxlength="300" placeholder="Hello"></label><button type="button" class="icon-button btn btn-icon btn-ghost-secondary remove-row" aria-label="Remove vocabulary entry">×</button><div class="audio-row"><input type="hidden" data-field="audio" value="${esc(word.audio||'')}"><button type="button" class="btn btn-sm btn-outline-danger audio-record">● Record</button><button type="button" class="btn btn-sm btn-outline-secondary audio-upload">Upload audio</button><input type="file" class="audio-file" accept="audio/*" hidden><button type="button" class="btn btn-sm btn-outline-primary audio-play" hidden>▶ Listen</button><button type="button" class="btn btn-sm btn-ghost-secondary audio-clear" hidden>Remove recording</button><span class="audio-status muted" role="status"></span></div>`;
+  $('word-rows').append(row); audioControls(row);
 }
 function sentenceRow(sentence={fr:'',en:'',answer:'',distractors:[]}) {
   const row=document.createElement('div'); row.className='sentence-row';

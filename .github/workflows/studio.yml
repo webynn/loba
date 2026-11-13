@@ -29,3 +29,6 @@ jobs:
       - run: npm install --ignore-scripts --no-audit --no-fund
       - run: npm run check
       - run: npm test
+      - run: npm ci --prefix learn --no-audit --no-fund
+      - run: npm test --prefix learn
+      - run: npm run build --prefix learn

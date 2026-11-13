@@ -21,6 +21,9 @@ export class Store {
         for (const {id, ...content} of lessons) await db.query('INSERT INTO studio_lessons(id,content,published,published_version,published_at) VALUES($1,$2,$2,1,now()) ON CONFLICT(id) DO NOTHING', [id, JSON.stringify(content)]);
         await db.query("INSERT INTO studio_migrations(name) VALUES('initial-curriculum')");
       }
+      // Recordings that no draft or published lesson references after a week were abandoned uploads.
+      await db.query(`DELETE FROM studio_audio a WHERE a.created_at < now()-interval '7 days' AND NOT EXISTS
+        (SELECT 1 FROM studio_lessons l WHERE l.content::text LIKE '%'||a.id::text||'%' OR l.published::text LIKE '%'||a.id::text||'%')`);
       await db.query('DELETE FROM studio_sessions WHERE expires_at < now()');
       await db.query('DELETE FROM studio_login_attempts WHERE resets_at < now()');
       await db.query('COMMIT');
@@ -56,6 +59,8 @@ export class Store {
   async logout(tokenHash) { await this.pool.query('DELETE FROM studio_sessions WHERE token_hash=$1', [tokenHash]); }
   async lessons() { return (await this.pool.query("SELECT * FROM studio_lessons ORDER BY content->>'language', (content->>'position')::int, id")).rows; }
   async published() { return (await this.pool.query("SELECT id,published AS content,published_version AS version,published_at FROM studio_lessons WHERE published IS NOT NULL ORDER BY published->>'language', (published->>'position')::int, id")).rows; }
+  async saveAudio({ id, mime, data, email }) { await this.pool.query('INSERT INTO studio_audio(id,mime,data,admin_email) VALUES($1,$2,$3,$4)', [id, mime, data, email]); }
+  async audio(id) { return (await this.pool.query('SELECT mime,data FROM studio_audio WHERE id=$1', [id])).rows[0]; }
   async activity() { return (await this.pool.query('SELECT * FROM studio_activity ORDER BY id DESC LIMIT 15')).rows; }
   async mutate({ id, content, version, action, email }) {
     const db = await this.pool.connect();
