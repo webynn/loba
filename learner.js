@@ -57,7 +57,7 @@
     const hero=$('journeyHero');
     if(!hero.children.length){hero.innerHTML=`<div class="journey-copy"><div class="eyebrow">✦ <span id="heroEyebrow"></span></div><h1 id="heroTitle"></h1><p id="heroText"></p><button class="btn" id="resumeJourney"></button></div><div class="journey-scene" aria-hidden="true"><div class="scene-sun"></div><div class="scene-cloud c1"></div><div class="scene-cloud c2"></div><div class="scene-hill back"></div><div class="scene-hill front"></div><div class="scene-river"></div><div class="hero-parrot"><span class="animation-fallback">🦜</span></div><span class="scene-star">✦</span><span class="scene-word"></span></div>`;mount(hero.querySelector('.hero-parrot'),'lottie-parrot.json')}
     $('heroEyebrow').textContent=say('LES LANGUES DU CONGO','THE LANGUAGES OF CONGO');
-    $('heroTitle').textContent=LG.hi+' !';
+    $('heroTitle').textContent=LG.hi.replace(/[!\s]+$/,'')+' !';
     $('heroText').textContent=say('Un peu chaque jour. Et bientôt, toute une conversation.','A little every day. Soon, a whole conversation.');
     hero.querySelector('.scene-word').textContent=LANG_NAMES.en[S.lang];
     $('resumeJourney').textContent=say(done?'Continuer mon parcours':'C’est parti !',done?'Continue my journey':'Let’s begin!')+' →';
