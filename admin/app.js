@@ -46,9 +46,28 @@ function activities(items) {
   if(!items.length) return '<div class="activity-empty"><b>No recent activity.</b>Your existing curriculum is ready. Create, edit, or publish a lesson and your activity will appear here.</div>';
   return items.map(item=>`<div class="activity-item"><span class="activity-dot">${item.action==='published'?'↗':item.action==='created'?'+':'↺'}</span><div><p><b>${esc(item.lesson_title)}</b> ${esc(item.action)}.</p><small>${esc(item.admin_email)} · ${relative(item.created_at)}</small></div></div>`).join('');
 }
+// Consistent vector artwork for curriculum topics; stored lesson content stays intact.
+function lessonIcon(content) {
+  const paths = {
+    '👋':'M4 4h16v12H9l-5 4V4Z M8 8h8 M8 12h5',
+    '🆘':'M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4 M12 17h.01 M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
+    '👪':'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M16 3a4 4 0 0 1 0 8 M22 21v-2a4 4 0 0 0-3-3.87 M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
+    '🍲':'M3 12h18a9 9 0 0 1-18 0Z M8 3v5 M12 2v6 M16 3v5 M7 21h10',
+    '🔢':'M4 5h4v6 M4 11h8 M15 5h4v3l-4 3h4 M4 16h16 M8 14v6 M16 14v6',
+    '🏃🏾':'M14 5a2 2 0 1 0 0-4 2 2 0 0 0 0 4 M7 10l4-3 4 4 4 1 M11 7l-2 7 5 3v5 M9 14l-3 6H2',
+    '🏠':'M3 10l9-7 9 7 M5 9v12h14V9 M9 21v-8h6v8',
+    '🚕':'M5 11l2-7h10l2 7 M3 11h18v8H3v-8Z M5 19v2 M19 19v2 M6 15h2 M16 15h2',
+    '⏰':'M12 7v5l3 2 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
+    '🩺':'M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3Z',
+    '💵':'M5 7h14l2 14H3L5 7Z M9 8V6a3 3 0 0 1 6 0v2',
+    '💛':'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8'
+  };
+  const d=paths[content.icon] || 'M12 5C8 3 5 3 2 4v16c3-1 6-1 10 1 4-2 7-2 10-1V4c-3-1-6-1-10 1Z M12 5v16';
+  return `<span class="lesson-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="${d}"/></svg></span>`;
+}
 function table(rows) {
   if(!rows.length) return `<div class="empty-state"><span>▤</span><h3>No lessons here yet.</h3><p>Try a different filter or create the next lesson.</p><button class="button btn btn-outline-secondary new-lesson">＋ Create lesson</button></div>`;
-  return `<div class="table-responsive"><table class="table table-vcenter table-hover card-table"><thead><tr><th>Lesson</th><th>Language</th><th>Status</th><th>Vocabulary</th><th>Updated</th><th><span aria-label="Edit">↗</span></th></tr></thead><tbody>${rows.map(row=>`<tr><td><button class="lesson-edit" data-edit="${esc(row.id)}"><span class="lesson-name"><span class="lesson-icon">${esc(row.content.icon)}</span><span><b>${esc(row.content.title)}</b><small>UNIT ${String(row.content.position).padStart(2,'0')} · ${row.content.sentences.length} sentence exercises</small></span></span></button></td><td><span class="language-tag">${names[row.content.language]}</span></td><td>${badge(row)}</td><td>${row.content.words.length} words</td><td class="muted">${date(row.updated_at)}</td><td><button class="icon-button btn btn-icon btn-ghost-secondary" data-edit="${esc(row.id)}" aria-label="Edit ${esc(row.content.title)}">↗</button></td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="table-responsive"><table class="table table-vcenter table-hover card-table"><thead><tr><th>Lesson</th><th>Language</th><th>Status</th><th>Vocabulary</th><th>Updated</th><th><span aria-label="Edit">↗</span></th></tr></thead><tbody>${rows.map(row=>`<tr><td><button class="lesson-edit" data-edit="${esc(row.id)}"><span class="lesson-name">${lessonIcon(row.content)}<span><b>${esc(row.content.title)}</b><small>UNIT ${String(row.content.position).padStart(2,'0')} · ${row.content.sentences.length} sentence exercises</small></span></span></button></td><td><span class="language-tag">${names[row.content.language]}</span></td><td>${badge(row)}</td><td>${row.content.words.length} words</td><td class="muted">${date(row.updated_at)}</td><td><button class="icon-button btn btn-icon btn-ghost-secondary" data-edit="${esc(row.id)}" aria-label="Edit ${esc(row.content.title)}">↗</button></td></tr>`).join('')}</tbody></table></div>`;
 }
 function render() {
   const all=state.lessons;

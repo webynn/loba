@@ -70,3 +70,8 @@ button:focus-visible,a:focus-visible{outline:3px solid #3d9c85;outline-offset:3p
  .toast{bottom:calc(90px + env(safe-area-inset-bottom));left:16px;right:16px;max-width:none}.main-footer{font-size:11px;padding:16px 0}.activity-item{padding:16px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* Topic artwork uses the same stroke, scale and quiet green tile throughout Studio. */
+.lesson-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:#edf4f0;color:#316d59;flex:none;border:1px solid #dfeae3}
+.lesson-icon svg{width:23px;height:23px;display:block}
+@media(max-width:700px){.table td:nth-child(2),.table td:nth-child(3){padding-left:52px!important}}
