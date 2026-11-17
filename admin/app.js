@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const SWATCHES = ['#1c9bef','#2bb673','#ef4e4e','#e0a100','#ff8a1f','#8b5cf6','#0fa3b1','#8f4f1c'];
-const state = {lessons:[],languages:[],activity:[],learners:0,pending:0,view:'overview',status:'all',language:'all',search:'',editing:null,editingLanguage:null,dirty:false,busy:false};
+const state = {lessons:[],languages:[],activity:[],learners:0,learnerRows:null,learnerSearch:'',learnerLanguage:'all',learnerSort:'recent',pending:0,view:'overview',status:'all',language:'all',search:'',editing:null,editingLanguage:null,dirty:false,busy:false};
 let toastTimer;
 
 function toast(message) { $('toast').textContent=message; $('toast').hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('toast').hidden=true,3500); }
@@ -49,6 +49,8 @@ const TOPIC_ICONS = {
   '💵':'M5 7h14l2 14H3L5 7Z M9 8V6a3 3 0 0 1 6 0v2',
   '💛':'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8'
 };
+// The pictures editors can pick for a unit. The emoji is what lessons store; Studio draws the matching icon.
+const TOPICS = [['👋','Greetings'],['🆘','Getting by'],['👪','Family'],['🍲','Food'],['🔢','Numbers'],['🏃🏾','Actions'],['🏠','Home'],['🚕','Travel'],['⏰','Time'],['🩺','Health'],['💵','Shopping'],['💛','Feelings'],['📚','General']];
 function lessonIcon(content) {
   const d=TOPIC_ICONS[content.icon] || 'M12 5C8 3 5 3 2 4v16c3-1 6-1 10 1 4-2 7-2 10-1V4c-3-1-6-1-10 1Z M12 5v16';
   return `<span class="lesson-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="${d}"/></svg></span>`;
@@ -68,12 +70,14 @@ const views = () => ({
   overview:[t("Overview"),t("Your curriculum at a glance."),'lesson'],
   lessons:[t("Lessons"),t("Write, review and publish units for each language."),'lesson'],
   languages:[t("Languages"),t("Every language Loba teaches, and whether learners can see it."),'language'],
+  learners:[t('Learners'),t('Everyone who created an account in the learner app, and how far they’ve got.'),null],
   accounts:[t("Team"),t("People who can edit lessons in Studio."),null],
   activity:[t("Activity"),t("What your team has created, edited and published."),null],
 });
 function navigate(view) {
   state.view=view;
   if(view==='accounts') refreshAccounts();
+  if(view==='learners') loadLearners();
   for(const section of document.querySelectorAll('.view')) section.hidden=section.id!==view+'-view';
   document.querySelectorAll('.nav-item').forEach(b=>{ const on=b.dataset.view===view; b.classList.toggle('active',on); if(on)b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
   const [title,subtitle,action]=views()[view];
@@ -114,8 +118,9 @@ function render() {
   $('nav-count').textContent=all.length||''; $('nav-languages').textContent=state.languages.length||'';
   $('nav-pending').textContent=state.pending; $('nav-pending').hidden=!state.pending;
   const words=all.reduce((n,l)=>n+l.content.words.length,0);
-  $('stats').innerHTML=[[t("Lessons"),all.length,`${plural(state.languages.length,'language')}`],[t("Published"),live,t("Live in the learner app")],[t("Needs review"),review,t("Drafts and unpublished changes")],[t("Learners"),state.learners,words===1?t('1 word taught'):t('{n} words taught',{n:words.toLocaleString(StudioI18n.locale)})]]
-    .map(([label,value,sub])=>`<div class="stat"><span>${label}</span><b>${value.toLocaleString(StudioI18n.locale)}</b><small>${sub}</small></div>`).join('');
+  $('stats').innerHTML=[['Lessons',all.length,`${plural(state.languages.length,'language')}`],['Published',live,'Live in the learner app'],['Needs review',review,'Drafts and unpublished changes'],['Learners',state.learners,'See their progress','learners']]
+    .map(([label,value,sub,view])=>`<div class="stat${view?' link':''}" ${view?`data-view="${view}" role="button" tabindex="0"`:''}><span>${t(label)}</span><b>${value.toLocaleString(StudioI18n.locale)}</b><small>${t(sub)}</small></div>`).join('');
+  $('nav-learners').textContent=state.learners||'';
   $('language-summary').innerHTML=languageSummary();
   $('recent-activity').innerHTML=activities(state.activity.slice(0,5)); $('activity-list').innerHTML=activities(state.activity);
   $('recent-table').innerHTML=lessonTable([...all].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,5),{empty:t("No lessons yet.")});
@@ -127,6 +132,7 @@ function render() {
     && (!query||[row.content.title,row.content.titleEn,...row.content.words.flatMap(w=>[w.term,w.fr,w.en])].join(' ').toLowerCase().includes(query))).sort(byCurriculum);
   $('lessons-table').innerHTML=lessonTable(filtered);
   $('languages-table').innerHTML=languagesTable();
+  renderLearners();
   applyVars();
 }
 
@@ -164,7 +170,59 @@ function audioControls(row) {
 function renumber() {
   [...$('word-rows').children].forEach((r,i)=>r.querySelector('.idx').textContent=i+1);
   [...$('sentence-rows').children].forEach((r,i)=>r.querySelector('.idx').textContent=i+1);
-  $('word-count').textContent=$('word-rows').children.length||''; $('sentence-count').textContent=$('sentence-rows').children.length||'';
+  const words=[...$('word-rows').children].filter(r=>r.querySelector('[data-field="term"]').value.trim()).length;
+  $('word-count').textContent=words; $('word-count').classList.toggle('warn',words<4);
+  $('sentence-count').textContent=$('sentence-rows').children.length;
+}
+function switchTab(name) {
+  document.querySelectorAll('.sheet-tabs [data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===name)));
+  document.querySelectorAll('#lesson-form [data-panel]').forEach(p=>p.hidden=p.dataset.panel!==name);
+  $('editor').querySelector('.sheet-body').scrollTop=0;
+}
+// Keeps the "how learners see it" card and the position hint in step with the form.
+function updatePreview() {
+  const form=$('lesson-form'), f=new FormData(form), l=lang(f.get('language')||'');
+  const position=Number(f.get('position'))||0;
+  $('preview-icon').innerHTML=lessonIcon({icon:f.get('icon')}); $('preview-icon').dataset.c=l.color; applyVars($('preview-icon').parentElement);
+  $('preview-meta').textContent=`${l['name_'+StudioI18n.locale]} · ${t('Unit {n}',{n:position||'?'})}`;
+  $('preview-title').textContent=f.get('title')||t('Unit title');
+  $('preview-sub').textContent=f.get('titleEn')||'';
+  const others=state.lessons.filter(x=>x.content.language===l.code && x.id!==state.editing?.id);
+  const clash=others.find(x=>x.content.position===position);
+  const hint=$('position-hint');
+  hint.textContent=clash?t('Unit {n} is already “{title}”. Pick another number, or both will share the spot.',{n:position,title:clash.content.title}):t('{language}: {units}. Learners unlock units in this order.',{language:l['name_'+StudioI18n.locale],units:plural(others.length+(state.editing?.content.language===l.code?1:0),'unit')});
+  hint.classList.toggle('warn',!!clash);
+}
+function renderPickers(content) {
+  const langs=state.languages.some(l=>l.code===content.language)?state.languages:[...state.languages,lang(content.language)];
+  $('editor-language').innerHTML=langs.map(l=>`<label class="chip" data-c="${esc(l.color)}"><input type="radio" name="language" value="${esc(l.code)}" ${l.code===content.language?'checked':''}><span>${esc(l['name_'+StudioI18n.locale])}</span></label>`).join('');
+  const topics=TOPICS.some(([e])=>e===content.icon)?TOPICS:[...TOPICS,[content.icon,t("Current")]];
+  $('icon-picker').innerHTML=topics.map(([emoji,label])=>`<label title="${esc(t(label))}"><input type="radio" name="icon" value="${esc(emoji)}" ${emoji===content.icon?'checked':''} aria-label="${esc(t(label))}">${lessonIcon({icon:emoji})}<small>${esc(t(label))}</small></label>`).join('');
+  applyVars($('editor-language'));
+}
+function editorChrome(row, content) {
+  const l=lang(content.language);
+  $('editor-heading').textContent=row?content.title||t("Untitled lesson"):t("New lesson");
+  $('editor-eyebrow').textContent=row?`${l['name_'+StudioI18n.locale]||l.name_en} · ${t('Unit {n}',{n:content.position})}`:t("Draft");
+  $('editor-status').innerHTML=row?badge(row):'';
+  const notice=$('editor-notice'), s=row?status(row):'draft';
+  notice.className='banner'+(s==='published'?' live':s==='changes'?' changes':'');
+  notice.innerHTML=icon('info')+`<span><b>${t(s==='published'?'Live for learners.':s==='changes'?'Live, with saved changes.':'Draft.')}</b> ${t(s==='published'?'Edits you save stay private until you press Publish.':s==='changes'?'Learners still see the published version until you press Publish.':'Only your team can see it. Press Publish when it’s ready.')}</span>`;
+  $('delete-lesson').hidden=!row; $('unpublish-lesson').hidden=!row?.published;
+}
+function openEditor(id) {
+  if(!state.languages.length){ toast(t("Add a language first.")); openLanguage(); return; }
+  const row=state.lessons.find(l=>l.id===id); state.editing=row||null; state.dirty=false;
+  const language=state.language!=='all'?state.language:state.languages[0].code;
+  const content=row?.content||{language,position:Math.max(0,...state.lessons.filter(l=>l.content.language===language).map(l=>l.content.position))+1,title:'',titleEn:'',icon:'📚',tip:'',words:[],sentences:[]};
+  renderPickers(content);
+  for(const name of ['position','title','titleEn','tip']) $('lesson-form').elements.namedItem(name).value=content[name];
+  $('word-rows').replaceChildren(); content.words.forEach(w=>wordRow(w));
+  $('sentence-rows').replaceChildren(); content.sentences.forEach(s=>sentenceRow(s));
+  if(!content.words.length) wordRow();
+  renumber(); editorChrome(row,content); updatePreview(); switchTab('details');
+  $('editor-error').textContent=''; $('editor').showModal();
+  state.dirty=false;
 }
 function wordRow(word={term:'',fr:'',en:''}) {
   const row=document.createElement('div'); row.className='word-row vocab-grid';
@@ -176,31 +234,6 @@ function sentenceRow(sentence={fr:'',en:'',answer:'',distractors:[]}) {
   row.innerHTML=`<span class="idx"></span><div class="sentence-fields"><label class="field">${t("Prompt in French")}<input data-field="fr" value="${esc(sentence.fr)}" required maxlength="600" placeholder="Je vais bien"></label><label class="field">${t("Prompt in English")}<input data-field="en" value="${esc(sentence.en)}" maxlength="600" placeholder="I’m fine"></label><label class="field">${t("Correct answer")}<input data-field="answer" value="${esc(sentence.answer)}" required maxlength="600" placeholder="Nazali malamu"></label><label class="field">${t("Distractors")}<input data-field="distractors" value="${esc(sentence.distractors.join(', '))}" placeholder="Ozali, yo"><small>${t("Separate with commas.")}</small></label></div><button type="button" class="icon-btn sm danger remove" aria-label="${esc(t("Remove sentence"))}">${icon('trash')}</button>`;
   $('sentence-rows').append(row); renumber(); return row;
 }
-function editorChrome(row, content) {
-  const l=lang(content.language);
-  $('editor-heading').textContent=row?content.title||t("Untitled lesson"):t("New lesson");
-  $('editor-eyebrow').textContent=row?`${l['name_'+StudioI18n.locale]||l.name_en} · ${t('Unit {n}',{n:content.position})}`:t("Draft");
-  $('editor-status').innerHTML=row?badge(row):'';
-  const notice=$('editor-notice');
-  notice.className='banner'+(row?.published?' live':'');
-  notice.textContent=row?.published?t("This lesson is live. Saving keeps your edits private until you publish them."):t("Drafts are private. Publish when the unit is ready for learners.");
-  $('delete-lesson').hidden=!row; $('unpublish-lesson').hidden=!row?.published;
-}
-function openEditor(id) {
-  if(!state.languages.length){ toast(t("Add a language first.")); openLanguage(); return; }
-  const row=state.lessons.find(l=>l.id===id); state.editing=row||null; state.dirty=false;
-  const language=state.language!=='all'?state.language:state.languages[0].code;
-  const content=row?.content||{language,position:Math.max(0,...state.lessons.filter(l=>l.content.language===language).map(l=>l.content.position))+1,title:'',titleEn:'',icon:'📚',tip:'',words:[],sentences:[]};
-  $('editor-language').innerHTML=state.languages.map(l=>`<option value="${esc(l.code)}">${esc(l['name_'+StudioI18n.locale]||l.name_en)}</option>`).join('')
-    + (state.languages.some(l=>l.code===content.language)?'':`<option value="${esc(content.language)}">${esc(content.language)}</option>`);
-  for(const name of ['language','position','title','titleEn','icon','tip']) $('lesson-form').elements.namedItem(name).value=content[name];
-  $('word-rows').replaceChildren(); content.words.forEach(w=>wordRow(w));
-  $('sentence-rows').replaceChildren(); content.sentences.forEach(s=>sentenceRow(s));
-  if(!content.words.length) wordRow();
-  renumber(); editorChrome(row,content);
-  $('editor-error').textContent=''; $('editor').showModal(); $('editor').querySelector('.sheet-body').scrollTop=0;
-  state.dirty=false;
-}
 function readEditor() {
   const fields=new FormData($('lesson-form'));
   const pick=row=>Object.fromEntries([...row.querySelectorAll('[data-field]')].map(el=>[el.dataset.field,el.value.trim()]));
@@ -211,6 +244,9 @@ function readEditor() {
 function validEditor() {
   // Empty trailing word rows are ignored; everything else must be complete.
   for(const row of $('word-rows').children) { const inputs=[...row.querySelectorAll('input[data-field="term"],input[data-field="fr"]')]; const used=[...row.querySelectorAll('input[data-field]')].some(i=>i.value.trim()); inputs.forEach(i=>i.required=used); }
+  // Fields on another tab can't show their message, so open the tab holding the first problem.
+  const invalid=$('lesson-form').querySelector('input:invalid,textarea:invalid');
+  if(invalid) switchTab(invalid.closest('[data-panel]').dataset.panel);
   return $('lesson-form').reportValidity();
 }
 function busy(value) { state.busy=value; $('lesson-form').querySelectorAll('button,input,select,textarea').forEach(el=>el.disabled=value); }
@@ -249,7 +285,7 @@ async function mutateLesson(action) {
 function closeEditor() { if(state.busy) return; if(state.dirty&&!confirm(t("Discard your unsaved changes?"))) return; state.dirty=false; $('editor').close(); }
 function preview() {
   const c=readEditor(), l=lang(c.language);
-  $('preview-content').innerHTML=`<div class="preview-title"><span class="big">${esc(c.icon)}</span><p class="eyebrow">${esc(l['name_'+StudioI18n.locale]||l.name_en)} · ${t('Unit {n}',{n:c.position})}</p><h2>${esc(c.title)||t("Untitled lesson")}</h2>${c.titleEn?`<p class="muted">${esc(c.titleEn)}</p>`:''}</div>${c.tip?`<p class="preview-note">${esc(c.tip)}</p>`:''}<h3>${t("Words")}</h3>${c.words.length?`<div class="preview-list">${c.words.map(w=>`<div><b>${esc(w.term)}</b><span>${esc(w.fr)}${w.en?' · '+esc(w.en):''}</span></div>`).join('')}</div>`:'<p class="muted">${t("No words yet.")}</p>'}${c.sentences.length?`<h3>${t("Sentences")}</h3><div class="preview-list">${c.sentences.map(s=>`<div><b>${esc(s.fr)}</b><span>${esc(s.answer)}</span></div>`).join('')}</div>`:''}`;
+  $('preview-content').innerHTML=`<div class="preview-title"><span class="big">${esc(c.icon)}</span><p class="eyebrow">${esc(l['name_'+StudioI18n.locale]||l.name_en)} · ${t('Unit {n}',{n:c.position})}</p><h2>${esc(c.title)||t("Untitled lesson")}</h2>${c.titleEn?`<p class="muted">${esc(c.titleEn)}</p>`:''}</div>${c.tip?`<p class="preview-note">${esc(c.tip)}</p>`:''}<h3>${t("Words")}</h3>${c.words.length?`<div class="preview-list">${c.words.map(w=>`<div><b>${esc(w.term)}</b><span>${esc(w.fr)}${w.en?' · '+esc(w.en):''}</span></div>`).join('')}</div>`:`<p class="muted">${t("No words yet.")}</p>`}${c.sentences.length?`<h3>${t("Sentences")}</h3><div class="preview-list">${c.sentences.map(s=>`<div><b>${esc(s.fr)}</b><span>${esc(s.answer)}</span></div>`).join('')}</div>`:''}`;
   $('preview').showModal();
 }
 
@@ -285,12 +321,61 @@ async function deleteLanguage() {
   catch(error) { $('language-error').textContent=t(error.message); }
 }
 
+// ---------- learners ----------
+const DAY=86400000;
+const daysAgo = day => day?Math.floor((Date.now()-Date.parse(day+'T12:00:00Z'))/DAY):null;
+function lastSeen(l) {
+  const d=daysAgo(l.lastActiveDay);
+  if(d===null) return l.lessonsDone?'—':t("Not started");
+  return d<=0?t("Today"):d===1?t("Yesterday"):d<7?t('{n} days ago',{n:d}):date(l.lastActiveDay);
+}
+async function loadLearners() {
+  $('learners-error').textContent='';
+  if(!state.learnerRows) $('learners-table').innerHTML=`<div class="empty">${t("Loading learners…")}</div>`;
+  try { state.learnerRows=(await api('/api/admin/learners')).learners; state.learners=state.learnerRows.length; render(); }
+  catch(error) { $('learners-error').textContent=error.message; }
+}
+function unitsDone(l) { return Object.values(l.progress).filter(n=>n>=4).length; }
+function renderLearners() {
+  const rows=state.learnerRows; if(!rows) return;
+  const active=rows.filter(l=>{ const d=daysAgo(l.lastActiveDay); return d!==null&&d<7; }).length;
+  $('learner-stats').innerHTML=[[t("Learners"),rows.length,t("Accounts created")],[t("Active this week"),active,t("Practised in the last 7 days")],[t("Lessons completed"),rows.reduce((n,l)=>n+l.lessonsDone,0),t("By all learners")],[t("Words learned"),rows.reduce((n,l)=>n+l.wordsLearned,0),t("Across all languages")]]
+    .map(([label,value,sub])=>`<div class="stat"><span>${label}</span><b>${value.toLocaleString(StudioI18n.locale)}</b><small>${t(sub)}</small></div>`).join('');
+  $('learner-language').innerHTML=`<option value="all">${t("All languages")}</option>${state.languages.map(l=>`<option value="${esc(l.code)}">${esc(l['name_'+StudioI18n.locale])}</option>`).join('')}`;
+  $('learner-language').value=state.learnerLanguage;
+  const q=state.learnerSearch.toLowerCase().trim();
+  const sorters={recent:(a,b)=>(b.lastActiveDay||'').localeCompare(a.lastActiveDay||'')||new Date(b.joined)-new Date(a.joined),xp:(a,b)=>b.xp-a.xp,streak:(a,b)=>b.streak-a.streak||b.bestStreak-a.bestStreak,new:(a,b)=>new Date(b.joined)-new Date(a.joined)};
+  const list=rows.filter(l=>(state.learnerLanguage==='all'||l.language===state.learnerLanguage)&&(!q||`${l.name} ${l.email}`.toLowerCase().includes(q))).sort(sorters[state.learnerSort]);
+  if(!rows.length) { $('learners-table').innerHTML=`<div class="empty"><b>${t("No learners yet.")}</b><span>${t("People who create an account in the learner app appear here.")}</span></div>`; return; }
+  if(!list.length) { $('learners-table').innerHTML=`<div class="empty"><b>${t("No learners match.")}</b><span>${t("Try another search or language.")}</span></div>`; return; }
+  $('learners-table').innerHTML=`<table class="table"><thead><tr><th>${t("Learner")}</th><th>${t("Learning")}</th><th>XP</th><th>${t("Streak")}</th><th>${t("Lessons")}</th><th>${t("Words")}</th><th>${t("Last practice")}</th><th>${t("Joined")}</th></tr></thead><tbody>${list.map(l=>`<tr data-learner="${esc(l.id)}"><td><span class="lesson-cell"><span class="me-avatar">${esc(l.name[0]?.toUpperCase()||'?')}</span><span><b>${esc(l.name)}</b><small>${esc(l.email)}</small></span></span></td><td class="indent">${l.language?langTag(l.language):`<span class="muted">${t("Not chosen")}</span>`}</td><td class="num indent">${l.xp.toLocaleString(StudioI18n.locale)} XP</td><td class="num hide-sm">${l.streak?`<span class="streak">${icon('flame')}${l.streak}</span>`:'<span class="muted">0</span>'}</td><td class="num hide-sm">${l.lessonsDone}</td><td class="num hide-sm">${l.wordsLearned}</td><td class="num indent">${lastSeen(l)}</td><td class="num hide-sm">${date(l.joined)}</td></tr>`).join('')}</tbody></table>`;
+  applyVars($('learners-table'));
+}
+function openLearner(id) {
+  const l=state.learnerRows?.find(x=>x.id===id); if(!l) return;
+  $('learner-avatar').textContent=l.name[0]?.toUpperCase()||'?'; $('learner-heading').textContent=l.name; $('learner-email').textContent=l.email;
+  const tiles=[['XP',l.xp.toLocaleString(StudioI18n.locale)],[t("Current streak"),plural(l.streak,'day')],[t("Best streak"),plural(l.bestStreak,'day')],[t("Lessons done"),l.lessonsDone],[t("Words learned"),l.wordsLearned],[t("Daily goal"),l.goal?`${l.goal} XP`:'—']];
+  // Units grouped by language, in course order, for every language the learner has touched.
+  const codes=[...new Set([l.language,...state.lessons.filter(x=>l.progress[x.id]).map(x=>x.content.language)].filter(Boolean))];
+  const courses=codes.map(code=>{
+    const units=state.lessons.filter(x=>x.content.language===code&&x.published).sort(byCurriculum);
+    const done=units.filter(u=>(l.progress[u.id]||0)>=4).length;
+    return `<section class="course"><header><span class="lang-tag" data-c="${esc(lang(code).color)}">${esc(lang(code)['name_'+StudioI18n.locale])}</span><small>${t('{n} of {total} units complete',{n:done,total:units.length})}${code===l.language?' · '+t('Learning now'):''}</small></header>
+      ${units.map(u=>{ const n=l.progress[u.id]||0; return `<div class="course-unit ${n>=4?'done':n?'started':''}">${lessonIcon(u.content)}<span><b>${esc(u.content.title)}</b><small>${t('Unit {n}',{n:u.content.position})} · ${n>=4?t("Complete"):n?t('{n} of 4 lessons',{n}):t("Not started")}</small></span><span class="meter" data-c="${esc(lang(code).color)}"><i data-pct="${n*25}"></i></span></div>`; }).join('')}</section>`;
+  }).join('');
+  $('learner-body').innerHTML=`<div class="tiles">${tiles.map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>
+    <p class="muted small">${t('Joined')} ${date(l.joined)} · ${t('Last practice')} ${lastSeen(l).toLowerCase()}${l.lastSync?` · ${t('Progress saved')} ${relative(l.lastSync).toLowerCase()}`:''}</p>
+    ${courses||`<div class="empty"><b>${t("No lessons started yet.")}</b><span>${t("Their progress shows here once they finish a lesson.")}</span></div>`}`;
+  applyVars($('learner-body'));
+  $('learner-dialog').showModal();
+}
+
 // ---------- team ----------
 async function refreshAccounts(quiet=false) {
-  if(!quiet) { $('accounts-error').textContent=''; $('accounts-list').innerHTML='<div class="empty">${t("Loading…")}</div>'; }
+  if(!quiet) { $('accounts-error').textContent=''; $('accounts-list').innerHTML=`<div class="empty">${t("Loading…")}</div>`; }
   try {
     const {accounts}=await api('/api/admin/accounts'); state.pending=accounts.length; render();
-    $('accounts-list').innerHTML=accounts.length?accounts.map(a=>`<div class="request"><div><b>${esc(a.email)}</b><small>${t('Requested {date}',{date:date(a.created_at)})}</small></div><button class="btn" data-approve="${esc(a.id)}" data-email="${esc(a.email)}">${icon('check')}${t("Approve")}</button></div>`).join(''):'<div class="empty"><b>${t("No pending requests.")}</b><span>${t("New requests from /signup appear here.")}</span></div>';
+    $('accounts-list').innerHTML=accounts.length?accounts.map(a=>`<div class="request"><div><b>${esc(a.email)}</b><small>${t('Requested {date}',{date:date(a.created_at)})}</small></div><button class="btn" data-approve="${esc(a.id)}" data-email="${esc(a.email)}">${icon('check')}${t("Approve")}</button></div>`).join(''):`<div class="empty"><b>${t("No pending requests.")}</b><span>${t("New requests from /signup appear here.")}</span></div>`;
   } catch(error) { if(!quiet){ $('accounts-list').textContent=''; $('accounts-error').textContent=t(error.message); } }
 }
 $('refresh-accounts').onclick=()=>refreshAccounts();
@@ -324,13 +409,15 @@ $('logout').onclick=async()=>{ try{ await api('/api/auth/logout',{method:'POST',
 
 // ---------- events ----------
 document.addEventListener('click',event=>{
-  const target=event.target.closest('button,tr'); if(!target) return;
+  const target=event.target.closest('button,tr,[data-view]'); if(!target) return;
   const d=target.dataset;
   if(d.view) navigate(d.view);
   if(target.classList.contains('new-lesson')) openEditor();
   if(target.classList.contains('new-language')) openLanguage();
   if(d.edit) openEditor(d.edit);
   if(d.editLanguage) openLanguage(d.editLanguage);
+  if(d.learner) openLearner(d.learner);
+  if(d.tab) switchTab(d.tab);
   if(d.filterLanguage) { state.language=d.filterLanguage; state.status='all'; document.querySelectorAll('[data-status]').forEach(b=>b.classList.toggle('selected',b.dataset.status==='all')); navigate('lessons'); }
   if(d.status) { state.status=d.status; document.querySelectorAll('[data-status]').forEach(b=>b.classList.toggle('selected',b===target)); render(); }
   if(target.classList.contains('remove')) { target.closest('.word-row,.sentence-row').remove(); state.dirty=true; renumber(); }
@@ -341,7 +428,13 @@ $('language-filter').onchange=e=>{ state.language=e.target.value; render(); };
 $('retry').onclick=refresh;
 $('add-word').onclick=()=>{ wordRow().querySelector('input').focus(); state.dirty=true; };
 $('add-sentence').onclick=()=>{ sentenceRow().querySelector('input').focus(); state.dirty=true; };
-$('lesson-form').oninput=()=>state.dirty=true;
+$('lesson-form').oninput=e=>{ state.dirty=true; if(e.target.dataset.field==='term') renumber(); else updatePreview(); };
+$('lesson-form').onchange=e=>{ if(e.target.type==='radio') { state.dirty=true; updatePreview(); } };
+$('learner-search').oninput=e=>{ state.learnerSearch=e.target.value; renderLearners(); };
+$('learner-language').onchange=e=>{ state.learnerLanguage=e.target.value; renderLearners(); };
+$('learner-sort').onchange=e=>{ state.learnerSort=e.target.value; renderLearners(); };
+$('close-learner').onclick=()=>$('learner-dialog').close();
+document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.matches?.('.stat.link')) e.target.click(); });
 $('lesson-form').onsubmit=e=>{ e.preventDefault(); save(); };
 $('publish-lesson').onclick=()=>save(true); $('delete-lesson').onclick=()=>mutateLesson('delete'); $('unpublish-lesson').onclick=()=>mutateLesson('unpublish');
 $('close-editor').onclick=closeEditor; $('editor').addEventListener('cancel',e=>{ e.preventDefault(); closeEditor(); });
