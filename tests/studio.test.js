@@ -127,7 +127,7 @@ test('invalid and oversized JSON requests are rejected',async()=>{
   assert.equal((await invoke(app,{...options,raw:' '.repeat(200001)})).status,413);
 });
 test('static serving exposes only allowlisted assets and includes restrictive headers',async()=>{
-  const {app}=authenticated();const index=await invoke(app);assert.equal(index.status,200);assert.match(index.raw,/Loba Studio/);assert.match(index.headers['content-security-policy'],/script-src 'self'/);
+  const {app}=authenticated();const index=await invoke(app,{url:'/studio'});assert.equal(index.status,200);assert.match(index.raw,/Loba Studio/);assert.match(index.headers['content-security-policy'],/script-src 'self'/);
   for(const path of ['/.env','/server/store.js','/data/lessons.json','/../.env','/sw.js'])assert.equal((await invoke(app,{url:path})).status,404,path);
   assert.equal((await invoke(app,{url:'/admin/app.js'})).status,200);
   assert.equal((await invoke(app,{url:'/admin/style.css'})).status,200);
@@ -188,4 +188,26 @@ test('teachers upload recordings that learners can stream; other content is refu
   assert.throws(()=>validateLesson({...lesson,words:[{term:'Mbote',fr:'Bonjour',audio:'../../etc/passwd'}]}),{status:400});
   assert.equal(sniffAudio(Buffer.from('ID3\x04\x00\x00\x00\x00\x00\x00\x00\x00')),'audio/mpeg');
   assert.equal(sniffAudio(Buffer.from('\x00\x00\x00\x20ftypM4A \x00\x00')),'audio/mp4');
+});
+
+test('CongoLingo production origins work while untrusted origins remain blocked',async()=>{
+  const {app,headers}=authenticated();
+  for(const origin of ['https://congolingo.com','https://www.congolingo.com']){
+    const result=await invoke(app,{url:'/api/auth/login',method:'POST',headers:{...headers,origin},data:null});
+    assert.equal(result.status,400);
+    assert.equal(result.data.error,'Enter your email and password.');
+  }
+  for(const origin of [undefined,'null','http://congolingo.com','https://congolingo.com.evil.example','https://evil.example']){
+    assert.equal((await invoke(app,{url:'/api/auth/login',method:'POST',headers:{...headers,origin,host:'congolingo.com','x-forwarded-host':'congolingo.com'},data:null})).status,403);
+  }
+});
+test('homepage opens learning and Studio routes stay available',async()=>{
+  const {app}=authenticated();
+  for(const method of ['GET','HEAD']){
+    const result=await invoke(app,{url:'/',method});
+    assert.equal(result.status,302);assert.equal(result.headers.location,'/learn/');assert.equal(result.raw,'');
+  }
+  for(const url of ['/studio','/studio/','/admin','/admin/','/signup']){
+    const result=await invoke(app,{url});assert.equal(result.status,200);assert.match(result.raw,/Loba Studio/);
+  }
 });
