@@ -54,6 +54,8 @@ function sendAudio(req, res, {mime, data}) {
 }
 
 export function createApp(store, {origin, production = false, learnDir = new URL('../learn/dist/', import.meta.url)}) {
+  // Explicit production domains; never trust arbitrary Host or forwarded headers.
+  const allowedOrigins = new Set([origin, ...(production ? ['https://congolingo.com', 'https://www.congolingo.com'] : [])]);
   const cookieName = production ? '__Host-loba_session' : 'loba_session';
   const cookie = (token, age) => `${cookieName}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${age}${production ? '; Secure' : ''}`;
   return async (req, res) => {
@@ -78,7 +80,7 @@ export function createApp(store, {origin, production = false, learnDir = new URL
       }
       if (path.startsWith('/api/')) {
         if (!['GET','HEAD'].includes(method)) {
-          if (req.headers.origin !== origin) throw fail(403, 'Request origin is not allowed.');
+          if (!allowedOrigins.has(req.headers.origin)) throw fail(403, 'Request origin is not allowed.');
           if (path !== '/api/admin/audio' && !(req.headers['content-type'] || '').startsWith('application/json')) throw fail(415, 'Use application/json.');
         }
         if (path === '/api/auth/signup' && method === 'POST') {
@@ -143,8 +145,9 @@ export function createApp(store, {origin, production = false, learnDir = new URL
         throw fail(404, 'Endpoint not found.');
       }
       if (method !== 'GET' && method !== 'HEAD') throw fail(405, 'Method not allowed.');
+      if (path === '/') { res.writeHead(302, {Location: '/learn/'}); return res.end(); }
       if (path === '/learn' || path.startsWith('/learn/')) return await serveLearn(res, path, method, learnDir);
-      const files = {'/admin/tabler.css':'../node_modules/@tabler/core/dist/css/tabler.min.css','/':'../admin/index.html','/admin':'../admin/index.html','/admin/':'../admin/index.html','/admin/app.js':'../admin/app.js','/admin/style.css':'../admin/style.css','/privacy.html':'../privacy.html','/manifest.webmanifest':'../manifest.webmanifest','/icons/icon-192.png':'../icons/icon-192.png','/icons/icon-512.png':'../icons/icon-512.png','/icons/apple-touch-icon.png':'../icons/apple-touch-icon.png'};
+      const files = {'/admin/tabler.css':'../node_modules/@tabler/core/dist/css/tabler.min.css','/studio':'../admin/index.html','/studio/':'../admin/index.html','/admin':'../admin/index.html','/admin/':'../admin/index.html','/admin/app.js':'../admin/app.js','/admin/style.css':'../admin/style.css','/privacy.html':'../privacy.html','/manifest.webmanifest':'../manifest.webmanifest','/icons/icon-192.png':'../icons/icon-192.png','/icons/icon-512.png':'../icons/icon-512.png','/icons/apple-touch-icon.png':'../icons/apple-touch-icon.png'};
       const file = path === '/signup' || path === '/signup/' ? '../admin/index.html' : files[path]; if (!file) throw fail(404,'Page not found.');
       res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
       const ext = file.split('.').at(-1);
