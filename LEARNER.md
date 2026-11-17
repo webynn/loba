@@ -52,6 +52,7 @@ cookie (`loba_learner`, 60 days) and never grant access to Studio.
 | `src/routes/` | Screens: path, practice, quests, shop, profile, onboarding, lesson, practice session. |
 | `src/i18n/` | French and English UI strings. |
 | `src/styles/app.css` | Design tokens and all styles, light and dark. |
+| `src/lottie/` | Seven animations from the LottieFiles library, recoloured to Loba's palette and played by `components/Lottie.tsx` (player and files load on demand). Sources: `heart` broken-heart-mHD1OEG6Mp, `fish` (id 273-download "fish", d692f45e…/muIHYJpwts), `elephant` cute elephant animal (FjmMTJKl8r), `gem` diamond-ZGfZSUJ4Jx, `africa` africa-a1BslGW9CW, `pirogue` canoe-oMGQJmz2gx, `sparkle` shine (BosckeUhJl). Check each file's licence on lottiefiles.com before launch. |
 
 Each unit has 4 lessons that ramp up (meet half the words → the other half → mix with
 sentences → recall by typing) followed by a chest. Exercise types: meaning, recall,
@@ -83,6 +84,6 @@ in Studio or learner accounts on the server first.
 
 The mascot (Loba, an African grey parrot), the icon set and the path scenery are original
 SVG drawn in `src/components/Loba.tsx` and `src/components/Art.tsx`, animated with CSS.
-No emoji or third-party illustrations are used in the UI.
+Decorative animations from LottieFiles are loaded on demand through `src/components/Lottie.tsx`; the player respects reduced-motion preferences.
 
 - **Fredoka** and **Nunito**, SIL Open Font License, self-hosted via @fontsource-variable.

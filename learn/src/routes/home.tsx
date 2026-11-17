@@ -14,6 +14,7 @@ import { HeroScene } from '../landing/HeroScene'
 import { MiniLesson } from '../landing/MiniLesson'
 import { ChatPhone, MicDemo, RumbaDrum, StreakDemo } from '../landing/Showcase'
 import { useLanding } from '../landing/useLanding'
+import { Lottie } from '../components/Lottie'
 import '../styles/landing.css'
 
 export const Route = createFileRoute('/home')({ component: Home })
@@ -88,6 +89,13 @@ function Home() {
             </div>
           </div>
         </section>
+
+        <div className="lp-river" aria-hidden="true">
+          <div className="lp-boat">
+            <Loba mood="idle" />
+            <Lottie name="pirogue" loop viewBox="40 190 920 470" />
+          </div>
+        </div>
 
         <nav className="lp-langs" aria-label={t('langsLabel')}>
           <div className="lp-wrap lp-langs-inner">
@@ -196,7 +204,7 @@ function Home() {
           </nav>
           <UiSwitch />
         </div>
-        <p className="lp-wrap lp-foot-base">{t('madeIn')} · 🇨🇩</p>
+        <p className="lp-wrap lp-foot-base"><Lottie name="africa" className="lp-africa" /> {t('madeIn')}</p>
       </footer>
     </div>
   )

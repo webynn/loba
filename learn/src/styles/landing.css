@@ -294,3 +294,15 @@
   .acct-art .scene-hint { display: none; }
   .acct-card { padding: 24px 18px 18px; border-radius: 24px; }
 }
+
+/* ---------- the river under the hero, and Africa in the footer ---------- */
+.lp-river { position: relative; height: 132px; overflow: hidden; background: linear-gradient(to bottom, transparent 0 84px, var(--sky-tint) 84px); }
+/* Loba sits in the hull: he is drawn first, so the pirogue's side and the paddle cover his feet. */
+.lp-boat { position: absolute; bottom: 0; left: 0; width: 176px; animation: lp-drift 30s linear infinite; }
+.lp-boat .loba { position: absolute; left: 50%; bottom: 56px; width: 88px; height: 88px; translate: -56% 0; }
+.lp-boat .loba-shadow { display: none; }
+.lp-boat .lottie { position: relative; }
+@keyframes lp-drift { from { transform: translateX(-190px); } to { transform: translateX(100vw); } }
+.lp-foot-base { display: flex; align-items: center; gap: 10px; }
+.lp-africa { flex: none; width: 34px; height: 38px; }
+@media (prefers-reduced-motion: reduce) { .lp-boat { left: 12%; animation: none; } }
