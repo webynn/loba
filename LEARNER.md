@@ -87,3 +87,7 @@ SVG drawn in `src/components/Loba.tsx` and `src/components/Art.tsx`, animated wi
 Decorative animations from LottieFiles are loaded on demand through `src/components/Lottie.tsx`; the player respects reduced-motion preferences.
 
 - **Fredoka** and **Nunito**, SIL Open Font License, self-hosted via @fontsource-variable.
+
+## Masapo storybook
+
+`/learn/story` is a public interactive tale, available in French and English with Lingala and Swahili vocabulary. Content and illustrations live in `learn/src/story/`, with river/night ambience in `audio/sfx.ts`. The homepage links to the book.
