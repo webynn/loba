@@ -202,7 +202,7 @@ test('teachers upload recordings that learners can stream; other content is refu
 
 test('CongoLingo production origins work while untrusted origins remain blocked',async()=>{
   const {app,headers}=authenticated();
-  for(const origin of ['https://congolingo.com','https://www.congolingo.com']){
+  for(const origin of ['https://congolingo.com','https://www.congolingo.com','https://studio.congolingo.com']){
     const result=await invoke(app,{url:'/api/auth/login',method:'POST',headers:{...headers,origin},data:null});
     assert.equal(result.status,400);
     assert.equal(result.data.error,'Enter your email and password.');
@@ -266,4 +266,16 @@ test('learners sign up with name, email and password and keep progress on their 
   assert.equal((await invoke(app,{url:'/api/learn/account',method:'DELETE',headers:{...h,cookie:learnerCookie},data:{password:'wrong-password'}})).status,401);
   const removed=await invoke(app,{url:'/api/learn/account',method:'DELETE',headers:{...h,cookie:learnerCookie},data:{password:'kinshasa2026'}});
   assert.equal(removed.status,200);assert.match(removed.headers['set-cookie'],/Max-Age=0/);assert.equal(store.learnersMap.size,0);assert.equal(store.progressMap.size,0);
+});
+
+test('Studio hostname opens the dashboard without changing the learner homepage',async()=>{
+  const {app}=authenticated();
+  for(const method of ['GET','HEAD']){
+    for(const host of ['studio.congolingo.com','STUDIO.CONGOLINGO.COM']){
+      const r=await invoke(app,{url:'/',method,headers:{host}});
+      assert.equal(r.status,302);assert.equal(r.headers.location,'/studio');
+    }
+    const r=await invoke(app,{url:'/',method,headers:{host:'congolingo.com','x-forwarded-host':'studio.congolingo.com'}});
+    assert.equal(r.headers.location,'/learn/');
+  }
 });

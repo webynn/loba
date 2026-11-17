@@ -64,7 +64,7 @@ function progressState(value) {
 
 export function createApp(store, {origin, production = false, learnDir = new URL('../learn/dist/', import.meta.url)}) {
   // Explicit production domains; never trust arbitrary Host or forwarded headers.
-  const allowedOrigins = new Set([origin, ...(production ? ['https://congolingo.com', 'https://www.congolingo.com'] : [])]);
+  const allowedOrigins = new Set([origin, ...(production ? ['https://congolingo.com', 'https://www.congolingo.com', 'https://studio.congolingo.com'] : [])]);
   const cookieName = production ? '__Host-loba_session' : 'loba_session';
   const cookie = (token, age) => `${cookieName}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${age}${production ? '; Secure' : ''}`;
   // Learners have their own session cookie; it never grants access to Studio.
@@ -221,7 +221,10 @@ export function createApp(store, {origin, production = false, learnDir = new URL
         throw fail(404, 'Endpoint not found.');
       }
       if (method !== 'GET' && method !== 'HEAD') throw fail(405, 'Method not allowed.');
-      if (path === '/') { res.writeHead(302, {Location: '/learn/'}); return res.end(); }
+      if (path === '/') {
+        const studioHost = String(req.headers.host || '').toLowerCase() === 'studio.congolingo.com';
+        res.writeHead(302, {Location: studioHost ? '/studio' : '/learn/'}); return res.end();
+      }
       if (path === '/learn' || path.startsWith('/learn/')) return await serveLearn(res, path, method, learnDir);
       const files = {'/studio':'../admin/index.html','/studio/':'../admin/index.html','/admin':'../admin/index.html','/admin/':'../admin/index.html','/admin/app.js':'../admin/app.js','/admin/style.css':'../admin/style.css','/privacy.html':'../privacy.html','/manifest.webmanifest':'../manifest.webmanifest','/icons/icon-192.png':'../icons/icon-192.png','/icons/icon-512.png':'../icons/icon-512.png','/icons/apple-touch-icon.png':'../icons/apple-touch-icon.png'};
       const file = path === '/signup' || path === '/signup/' ? '../admin/index.html' : files[path]; if (!file) throw fail(404,'Page not found.');
