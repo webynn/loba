@@ -176,3 +176,11 @@ GitHub Actions run [43279382143](https://github.com/webynn/loba/actions/runs/432
 The dashboard is plain HTML, CSS and JavaScript with its own small design system (`admin/style.css`) and an inline SVG icon set; it loads nothing from third parties. On phones, navigation moves to a bottom bar and the lesson editor opens full screen.
 
 Anyone may register at /signup with an email and a 14–256 character password. Public registrations are stored with approved=false and receive no session. Approved administrators use Accounts to grant workspace access; approval grants lesson management and account-approval permissions. Email ownership is not verified, so administrators must independently recognize the person before approving. Existing administrators keep access. The /learn application still uses its original authentication and is separate from Studio registration.
+
+## Learner Google sign-in
+
+Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_REDIRECT_URI` on the Railway service. The production callback is exactly `https://congolingo.com/api/learn/google/callback`. Create a Web application OAuth client with this authorized redirect URI in the CongoLingo Google Cloud project. Publish the external audience for public learners; only `openid email profile` are requested. No Google access or refresh tokens are stored.
+
+Without credentials the Google button is hidden. Google accounts are learner identities only and never grant Studio access. An existing password account must first sign in normally, then choose **Connect my Google account** in its profile using the same email. Saved progress is preserved. Google-only accounts can delete themselves from Profile after a Google sign-in within the last ten minutes.
+
+OAuth attempts expire after ten minutes and are bound to a host-only cookie, PKCE verifier, nonce and one-time database state. All Google sign-ins use the canonical root domain; sessions on www or Studio are not shared. Schema changes run automatically on startup and retain existing accounts and progress.

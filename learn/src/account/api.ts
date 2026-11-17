@@ -1,6 +1,8 @@
 import { queryOptions } from '@tanstack/react-query'
 
 export interface Learner {
+  googleLinked?: boolean
+  passwordLogin?: boolean
   name: string
   email: string
 }
@@ -58,7 +60,7 @@ export const logout = () => call<{ ok: true }>('/api/learn/logout', { method: 'P
 export const rename = (name: string) => call<{ learner: Learner }>('/api/learn/profile', { method: 'PUT', body: JSON.stringify({ name }) })
 
 export const deleteAccount = (password: string) =>
-  call<{ ok: true }>('/api/learn/account', { method: 'DELETE', body: JSON.stringify({ password }) })
+  call<{ ok: true }>('/api/learn/account', { method: 'DELETE', body: JSON.stringify({ password, confirm: true }) })
 
 /** `keepalive` lets the last save finish while the page is closing. */
 export const saveProgress = (state: unknown, keepalive = false) =>

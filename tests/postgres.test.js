@@ -59,6 +59,21 @@ test('PostgreSQL bootstrap, transactions, snapshots, conflicts and deletion', {s
     await store.saveProgress(learner.id,{v:1,lang:'ln',xp:'50',progress:{'ln-mbote':4},words:{'ln:Mbote':{level:2},'ln:Te':{level:0},bad:3}});
     const [row]=await store.learnerList();
     assert.equal(row.lang,'ln');assert.equal(row.xp,'50');assert.equal(row.words,1);assert.deepEqual(row.progress,{'ln-mbote':4});
+    await assert.rejects(store.googleLearner({sub:'google-nadia',email:'nadia@example.com',name:'Nadia'}),{status:409});
+    await store.googleLearner({sub:'google-nadia',email:'nadia@example.com',name:'Nadia'},learner.id);
+    assert.equal((await store.googleLearner({sub:'google-nadia',email:'changed@example.com',name:'New name'})).id,learner.id);
+    assert.equal((await store.progress(learner.id)).state.xp,'50','Linking preserves existing progress');
+    const googleOnly=await store.googleLearner({sub:'google-new',email:'google@example.com',name:'Google learner'});
+    assert.equal(googleOnly.password_hash,null);
+    await store.createLearnerSession('google-session',googleOnly.id,true);
+    assert.ok((await store.learnerSession('google-session')).google_auth_at);
+    assert.equal((await store.learnerSession('google-session')).password_login,false);
+    await assert.rejects(store.googleLearner({sub:'google-new',email:'nadia@example.com',name:'Nadia'},learner.id),{status:409});
+    await store.saveGoogleAttempt({stateHash:'state',bindingHash:'binding',verifier:'verifier',nonce:'nonce',sessionHash:null});
+    assert.equal(await store.consumeGoogleAttempt('state','wrong'),undefined);
+    assert.equal((await store.consumeGoogleAttempt('state','binding')).nonce,'nonce');
+    assert.equal(await store.consumeGoogleAttempt('state','binding'),undefined);
+    await store.deleteLearner(googleOnly.id);
     await store.deleteLearner(learner.id);
     assert.equal(await store.learnerSession('learner-session'),undefined);assert.equal(await store.progress(learner.id),null);
   }finally{await pool.end()}

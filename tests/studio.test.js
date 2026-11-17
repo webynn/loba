@@ -248,7 +248,7 @@ test('learners sign up with name, email and password and keep progress on their 
   assert.equal((await signup({name:'Nadia',email:'nadia@example.com',password:'kinshasa2026',state:[1,2]})).status,400);
   assert.equal((await invoke(app,{url:'/api/learn/signup',method:'POST',headers:{...h,origin:'https://attacker.example'},data:{name:'N',email:'n@example.com',password:'kinshasa2026'}})).status,403);
   const created=await signup({name:' Nadia ',email:' Nadia@Example.com ',password:'kinshasa2026',state:{v:1,xp:40}});
-  assert.equal(created.status,201);assert.deepEqual(created.data.learner,{name:'Nadia',email:'nadia@example.com'});assert.deepEqual(created.data.progress.state,{v:1,xp:40});
+  assert.equal(created.status,201);assert.deepEqual(created.data.learner,{name:'Nadia',email:'nadia@example.com',googleLinked:false,passwordLogin:true});assert.deepEqual(created.data.progress.state,{v:1,xp:40});
   const cookie=created.headers['set-cookie'];assert.match(cookie,/^__Host-loba_learner=[0-9a-f]{64}; Path=\/; HttpOnly; SameSite=Lax; Max-Age=\d+; Secure$/);
   const learnerCookie=cookie.split(';')[0];
   assert.equal((await signup({name:'Nadia',email:'nadia@example.com',password:'kinshasa2026'})).status,409);

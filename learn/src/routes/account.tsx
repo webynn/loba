@@ -1,4 +1,5 @@
 import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
+import { googleError } from '../account/GoogleSignIn'
 import { meQuery } from '../account/api'
 import { AuthForm, type AuthMode } from '../account/AuthForm'
 import { Loba } from '../components/Loba'
@@ -11,10 +12,10 @@ import '../styles/landing.css'
 
 /** Sign up or sign in — the first step before any learning. Styled like the landing page. */
 export const Route = createFileRoute('/account')({
-  validateSearch: (search: Record<string, unknown>): { mode: AuthMode } => ({ mode: search.mode === 'login' ? 'login' : 'signup' }),
-  beforeLoad: async ({ context }) => {
+  validateSearch: (search: Record<string, unknown>): { mode: AuthMode; authError?: string } => ({ mode: search.mode === 'login' ? 'login' : 'signup', authError: typeof search.authError === 'string' ? search.authError : undefined }),
+  beforeLoad: async ({ context, search }) => {
     const me = await context.queryClient.ensureQueryData(meQuery)
-    if (me.learner) throw redirect({ to: game.get().onboarded ? '/' : '/welcome' })
+    if (me.learner && !search.authError) throw redirect({ to: game.get().onboarded ? '/' : '/welcome' })
   },
   component: AccountPage,
 })
@@ -24,7 +25,7 @@ function AccountPage() {
   const l = useLanding()
   const navigate = useNavigate()
   const greetings = useGreetings()
-  const { mode } = Route.useSearch()
+  const { mode, authError } = Route.useSearch()
   const onboarded = game.get().onboarded
   const login = mode === 'login'
 
@@ -51,6 +52,7 @@ function AccountPage() {
         <section className="acct-card" aria-labelledby="acct-title">
           <h1 id="acct-title">{login ? t('loginTitle') : t('accountTitle')}</h1>
           <p>{login ? t('loginWhy') : onboarded ? `${t('accountWhy')} ${t('accountKeep')}` : t('accountWhy')}</p>
+          {authError && <p className="auth-error" role="alert">{googleError(authError, ui)}</p>}
           <AuthForm
             mode={mode}
             onModeChange={(m) => navigate({ to: '/account', search: { mode: m }, replace: true })}

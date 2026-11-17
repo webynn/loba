@@ -4,6 +4,7 @@ import { actions, game } from '../game/store'
 import { useT } from '../i18n/useT'
 import { AccountError, login, meQuery, signup, type Me } from './api'
 import { adopt, uploadNow } from './sync'
+import { GoogleSignIn } from './GoogleSignIn'
 
 export type AuthMode = 'signup' | 'login'
 
@@ -54,6 +55,7 @@ export function AuthForm({ mode, onModeChange, onDone }: {
 
   return (
     <form className="auth" onSubmit={submit} noValidate={false}>
+      <GoogleSignIn />
       {mode === 'signup' && (
         <label className="auth-field">
           <span>{t('fieldName')}</span>

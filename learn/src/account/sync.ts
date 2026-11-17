@@ -69,6 +69,8 @@ export function startSync(qc: QueryClient) {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') void push(qc, true)
   })
+  // OAuth completion must restore the account before any unsynced device state is uploaded.
+  if (window.location.pathname === '/learn/auth-complete') return
   void qc.ensureQueryData(meQuery).then((me) => {
     if (!me.learner) return
     if (store.get() && game.get().onboarded) void push(qc)

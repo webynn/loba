@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { AccountError, deleteAccount, logout, meQuery, rename, type Me } from '../../account/api'
+import { GoogleSignIn } from '../../account/GoogleSignIn'
 import { forgetDevice } from '../../account/sync'
 import { useLanguages } from '../../hooks'
 import { useSelector } from '@tanstack/react-store'
@@ -127,6 +128,7 @@ function ProfilePage() {
         {me?.learner && (
           <>
             <h2 style={{ margin: '32px 0 6px' }}>{t('account')}</h2>
+            {!me.learner.googleLinked && <GoogleSignIn link />}
             <div className="settings">
               <div className="setting account-row">
                 <span><b>{me.learner.name}</b><small>{me.learner.email}</small></span>
@@ -179,13 +181,14 @@ function ProfilePage() {
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} labelledBy="delete-title">
         <div className="modal-art"><Loba mood="sad" /></div>
         <h2 id="delete-title">{t('deleteAccount')}</h2>
-        <p>{t('deleteAccountText')}</p>
+        <p>{me?.learner?.passwordLogin === false ? (ui === 'fr' ? 'Cette action supprime définitivement votre compte et votre progression. Une connexion Google datant de moins de 10 minutes est nécessaire.' : 'This permanently deletes your account and progress. You must have signed in with Google within the last 10 minutes.') : t('deleteAccountText')}</p>
+        {me?.learner?.passwordLogin === false && <GoogleSignIn />}
         <form className="auth" onSubmit={(e) => { e.preventDefault(); void removeAccount() }}>
-          <input className="text-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('fieldPassword')} aria-label={t('fieldPassword')} autoComplete="current-password" required />
+          {me?.learner?.passwordLogin !== false && <input className="text-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('fieldPassword')} aria-label={t('fieldPassword')} autoComplete="current-password" required />}
           {accountError && <p className="auth-error" role="alert">{accountError}</p>}
           <div className="modal-actions">
             <button type="button" className="btn" onClick={() => setConfirmDelete(false)}>{t('noThanks')}</button>
-            <button type="submit" className="btn red" disabled={!password}>{t('deleteAccount')}</button>
+            <button type="submit" className="btn red" disabled={me?.learner?.passwordLogin !== false && !password}>{t('deleteAccount')}</button>
           </div>
         </form>
       </Modal>

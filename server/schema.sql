@@ -79,3 +79,17 @@ CREATE TABLE IF NOT EXISTS learner_progress (
   state JSONB NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Google identities belong only to learners, never Studio administrators.
+ALTER TABLE learners ALTER COLUMN password_hash DROP NOT NULL;
+ALTER TABLE learners ADD COLUMN IF NOT EXISTS google_sub TEXT UNIQUE;
+ALTER TABLE learner_sessions ADD COLUMN IF NOT EXISTS google_auth_at TIMESTAMPTZ;
+CREATE TABLE IF NOT EXISTS learner_oauth_attempts (
+  state_hash TEXT PRIMARY KEY,
+  binding_hash TEXT NOT NULL,
+  verifier TEXT NOT NULL,
+  nonce TEXT NOT NULL,
+  session_hash TEXT,
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT now() + interval '10 minutes'
+);
+CREATE INDEX IF NOT EXISTS learner_oauth_expiry ON learner_oauth_attempts(expires_at);

@@ -18,6 +18,7 @@
     "check": "node --check server/index.js && node --check server/app.js && node --check server/store.js && node --check admin/app.js && node --check learner.js"
   },
   "dependencies": {
+    "google-auth-library": "^11.3.4",
     "lottie-web": "5.13.0",
     "pg": "8.16.3"
   }

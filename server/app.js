@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { hashToken, verifyPassword, validateLesson, validateLanguage, validateLearner, sniffAudio, AUDIO_MAX_BYTES, LANGUAGE_CODE, fail } from './security.js';
 
@@ -55,7 +55,7 @@ function sendAudio(req, res, {mime, data}) {
 
 const PROGRESS_MAX_BYTES = 600_000;
 const readCookie = (req, name) => String(req.headers.cookie || '').split(';').map(v => v.trim()).find(v => v.startsWith(name + '='))?.slice(name.length + 1) || '';
-const publicLearner = l => ({ name: l.name, email: l.email });
+const publicLearner = l => ({ name: l.name, email: l.email, googleLinked: !!l.google_sub, passwordLogin: l.password_login ?? (l.password_hash !== undefined ? !!l.password_hash : true) });
 const count = v => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0; };
 /** What editors see about a learner: account details and a summary of their saved progress. */
 function learnerSummary(row) {
@@ -76,7 +76,7 @@ function progressState(value) {
   return value;
 }
 
-export function createApp(store, {origin, production = false, learnDir = new URL('../learn/dist/', import.meta.url)}) {
+export function createApp(store, {origin, production = false, google = null, learnDir = new URL('../learn/dist/', import.meta.url)}) {
   // Explicit production domains; never trust arbitrary Host or forwarded headers.
   const allowedOrigins = new Set([origin, ...(production ? ['https://congolingo.com', 'https://www.congolingo.com', 'https://studio.congolingo.com'] : [])]);
   const cookieName = production ? '__Host-loba_session' : 'loba_session';
@@ -84,11 +84,13 @@ export function createApp(store, {origin, production = false, learnDir = new URL
   // Learners have their own session cookie; it never grants access to Studio.
   const learnerCookieName = production ? '__Host-loba_learner' : 'loba_learner';
   const learnerCookie = (token, age) => `${learnerCookieName}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${production ? '; Secure' : ''}`;
+  const googleCookieName = production ? '__Host-loba_google' : 'loba_google';
+  const googleCookie = (token, age) => `${googleCookieName}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${production ? '; Secure' : ''}`;
   const clientAddress = req => production ? (String(req.headers['x-forwarded-for'] || '').split(',').at(-1).trim() || req.socket.remoteAddress) : req.socket.remoteAddress;
-  const startLearnerSession = async (res, learnerId) => {
+  const startLearnerSession = async (res, learnerId, viaGoogle = false) => {
     const token = randomBytes(32).toString('hex');
-    await store.createLearnerSession(hashToken(token), learnerId);
-    res.setHeader('Set-Cookie', learnerCookie(token, 60 * 24 * 3600));
+    await store.createLearnerSession(hashToken(token), learnerId, viaGoogle);
+    res.setHeader('Set-Cookie', viaGoogle ? [googleCookie('', 0), learnerCookie(token, 60 * 24 * 3600)] : learnerCookie(token, 60 * 24 * 3600));
   };
   return async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -116,6 +118,56 @@ export function createApp(store, {origin, production = false, learnDir = new URL
           if (path !== '/api/admin/audio' && !(req.headers['content-type'] || '').startsWith('application/json')) throw fail(415, 'Use application/json.');
         }
         if (path.startsWith('/api/learn/')) {
+          if (path === '/api/learn/auth-options' && method === 'GET') return json(200, {google:!!google, googleOrigin:google?.origin || null});
+          if (path === '/api/learn/google/start' && method === 'GET') {
+            if (!google) throw fail(404, 'Google sign-in is not configured.');
+            const link = new URL(req.url, origin).searchParams.get('link') === '1';
+            // Always use the registered host, including a host-only state cookie.
+            if (req.headers.host !== new URL(google.origin).host) {
+              res.writeHead(302, {Location:google.origin + '/api/learn/google/start'}); return res.end();
+            }
+            if (!(await store.loginAllowed(hashToken(`google:${clientAddress(req)}`)))) throw fail(429, 'Too many sign-in attempts. Try again in 15 minutes.');
+            let sessionHash = null;
+            if (link) {
+              sessionHash = hashToken(readCookie(req, learnerCookieName));
+              if (!(await store.learnerSession(sessionHash))) throw fail(401, 'Sign in before connecting Google.');
+            }
+            const state = randomBytes(32).toString('base64url'), binding = randomBytes(32).toString('base64url');
+            const verifier = randomBytes(32).toString('base64url'), nonce = randomBytes(32).toString('base64url');
+            await store.saveGoogleAttempt({stateHash:hashToken(state), bindingHash:hashToken(binding), verifier, nonce, sessionHash});
+            res.setHeader('Set-Cookie', googleCookie(binding, 600));
+            res.writeHead(302, {Location:google.authorizationUrl({state, nonce, challenge:createHash('sha256').update(verifier).digest('base64url')})}); return res.end();
+          }
+          if (path === '/api/learn/google/callback' && method === 'GET') {
+            if (!google) throw fail(404, 'Google sign-in is not configured.');
+            res.setHeader('Referrer-Policy', 'no-referrer');
+            res.setHeader('Set-Cookie', googleCookie('', 0));
+            try {
+              const params = new URL(req.url, origin).searchParams;
+              const state = params.get('state'), binding = readCookie(req, googleCookieName);
+              if (req.headers.host !== new URL(google.origin).host || !state || state.length > 128 || !binding) throw new Error('Invalid state');
+              const attempt = await store.consumeGoogleAttempt(hashToken(state), hashToken(binding));
+              if (!attempt) throw new Error('Expired or reused state');
+              if (params.has('error')) throw fail(400, 'google_cancelled');
+              const code = params.get('code');
+              if (!code || code.length > 4096) throw new Error('Missing code');
+              let linkId = null;
+              if (attempt.session_hash) {
+                const sessionHash = hashToken(readCookie(req, learnerCookieName));
+                if (sessionHash !== attempt.session_hash) throw new Error('Session changed');
+                const current = await store.learnerSession(sessionHash);
+                if (!current) throw new Error('Session expired');
+                linkId = current.id;
+              }
+              const identity = await google.exchange(code, attempt.verifier, attempt.nonce);
+              const account = await store.googleLearner(identity, linkId);
+              await startLearnerSession(res, account.id, true);
+              res.writeHead(302, {Location:google.origin + '/learn/auth-complete'}); return res.end();
+            } catch (error) {
+              const reason = ['google_cancelled','google_existing','google_link'].includes(error.message) ? error.message : 'google_failed';
+              res.writeHead(302, {Location:google.origin + '/learn/account?mode=login&authError=' + reason}); return res.end();
+            }
+          }
           if (path === '/api/learn/signup' && method === 'POST') {
             const input = await body(req, PROGRESS_MAX_BYTES);
             const {email, password, name} = validateLearner(input, {signup:true});
@@ -160,7 +212,11 @@ export function createApp(store, {origin, production = false, learnDir = new URL
           if (path === '/api/learn/account' && method === 'DELETE') {
             const input = await body(req);
             const full = await store.learnerById(learner.id);
-            if (typeof input?.password !== 'string' || !(await verifyPassword(input.password, full?.password_hash))) throw fail(401, 'This password is incorrect.');
+            if (full?.password_hash) {
+              if (typeof input?.password !== 'string' || !(await verifyPassword(input.password, full.password_hash))) throw fail(401, 'This password is incorrect.');
+            } else if (!full?.google_sub || input?.confirm !== true || !learner.google_auth_at || Date.now() - new Date(learner.google_auth_at).getTime() > 10 * 60 * 1000) {
+              throw fail(401, 'Reconnectez-vous avec Google, puis confirmez la suppression. / Sign in with Google again, then confirm deletion.');
+            }
             await store.deleteLearner(learner.id);
             res.setHeader('Set-Cookie', learnerCookie('', 0));
             return json(200, {ok:true});

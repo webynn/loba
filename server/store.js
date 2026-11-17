@@ -39,6 +39,7 @@ export class Store {
       await db.query('DELETE FROM studio_sessions WHERE expires_at < now()');
       await db.query('DELETE FROM studio_login_attempts WHERE resets_at < now()');
       await db.query('DELETE FROM learner_sessions WHERE expires_at < now()');
+      await db.query('DELETE FROM learner_oauth_attempts WHERE expires_at < now()');
       await db.query('COMMIT');
     } catch (error) { await db.query('ROLLBACK'); throw error; }
     finally { db.release(); }
@@ -125,10 +126,39 @@ export class Store {
     } catch (error) { await db.query('ROLLBACK'); throw error; }
     finally { db.release(); }
   }
+  async saveGoogleAttempt({stateHash, bindingHash, verifier, nonce, sessionHash}) {
+    await this.pool.query('DELETE FROM learner_oauth_attempts WHERE expires_at < now()');
+    await this.pool.query('INSERT INTO learner_oauth_attempts(state_hash,binding_hash,verifier,nonce,session_hash) VALUES($1,$2,$3,$4,$5)', [stateHash,bindingHash,verifier,nonce,sessionHash]);
+  }
+  async consumeGoogleAttempt(stateHash, bindingHash) {
+    return (await this.pool.query('DELETE FROM learner_oauth_attempts WHERE state_hash=$1 AND binding_hash=$2 AND expires_at>now() RETURNING *', [stateHash,bindingHash])).rows[0];
+  }
+  async googleLearner({sub, email, name}, linkId = null) {
+    const db = await this.pool.connect();
+    try {
+      await db.query('BEGIN');
+      // Serialize identity creation/linking to handle simultaneous first logins safely.
+      await db.query('SELECT pg_advisory_xact_lock(742110)');
+      let row = (await db.query('SELECT * FROM learners WHERE google_sub=$1', [sub])).rows[0];
+      if (linkId) {
+        const target = (await db.query('SELECT * FROM learners WHERE id=$1 FOR UPDATE', [linkId])).rows[0];
+        if (!target || target.email !== email || row && row.id !== linkId || target.google_sub && target.google_sub !== sub) throw fail(409, 'google_link');
+        row = (await db.query('UPDATE learners SET google_sub=$2 WHERE id=$1 RETURNING *', [linkId,sub])).rows[0];
+      } else if (!row) {
+        const existing = (await db.query('SELECT id FROM learners WHERE email=$1', [email])).rows[0];
+        // Email alone is not proof of ownership of an existing password account.
+        if (existing) throw fail(409, 'google_existing');
+        row = (await db.query('INSERT INTO learners(id,email,name,google_sub) VALUES($1,$2,$3,$4) RETURNING *', [randomUUID(),email,name,sub])).rows[0];
+      }
+      await db.query('COMMIT');
+      return row;
+    } catch (error) { await db.query('ROLLBACK'); throw error; }
+    finally { db.release(); }
+  }
   async learner(email) { return (await this.pool.query('SELECT * FROM learners WHERE email=$1', [email])).rows[0]; }
   async learnerById(id) { return (await this.pool.query('SELECT * FROM learners WHERE id=$1', [id])).rows[0]; }
-  async createLearnerSession(tokenHash, learnerId) { await this.pool.query("INSERT INTO learner_sessions(token_hash,learner_id,expires_at) VALUES($1,$2,now()+interval '60 days')", [tokenHash, learnerId]); }
-  async learnerSession(tokenHash) { return (await this.pool.query('SELECT l.id,l.email,l.name FROM learner_sessions s JOIN learners l ON l.id=s.learner_id WHERE s.token_hash=$1 AND s.expires_at>now()', [tokenHash])).rows[0]; }
+  async createLearnerSession(tokenHash, learnerId, google = false) { await this.pool.query("INSERT INTO learner_sessions(token_hash,learner_id,expires_at,google_auth_at) VALUES($1,$2,now()+interval '60 days',CASE WHEN $3 THEN now() ELSE NULL END)", [tokenHash, learnerId, google]); }
+  async learnerSession(tokenHash) { return (await this.pool.query('SELECT l.id,l.email,l.name,l.google_sub,(l.password_hash IS NOT NULL) AS password_login,s.google_auth_at FROM learner_sessions s JOIN learners l ON l.id=s.learner_id WHERE s.token_hash=$1 AND s.expires_at>now()', [tokenHash])).rows[0]; }
   async learnerLogout(tokenHash) { await this.pool.query('DELETE FROM learner_sessions WHERE token_hash=$1', [tokenHash]); }
   async progress(learnerId) { return (await this.pool.query('SELECT state,updated_at FROM learner_progress WHERE learner_id=$1', [learnerId])).rows[0] || null; }
   async saveProgress(learnerId, state) {
