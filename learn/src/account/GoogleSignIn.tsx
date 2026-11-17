@@ -30,8 +30,8 @@ export function GoogleSignIn({ link = false }: { link?: boolean }) {
 export function googleError(code: unknown, ui: string) {
   if (!code) return ''
   if (code === 'google_existing') return ui === 'fr'
-    ? 'Connectez-vous avec votre mot de passe, puis connectez Google depuis votre profil.'
-    : 'Sign in with your password, then connect Google from your profile.'
+    ? 'Un compte apprenant existe déjà avec cette adresse e-mail, mais il n’est pas encore lié à Google. Connectez-vous avec votre mot de passe habituel, puis allez dans Profil → « Connecter mon compte Google ». Votre progression sera conservée.'
+    : 'A learner account already exists with this email address, but it isn’t linked to Google yet. Sign in with your usual password, then go to Profile → “Connect my Google account”. Your learning progress will be kept.'
   if (code === 'google_link') return ui === 'fr'
     ? 'Choisissez le compte Google avec la même adresse e-mail que votre compte apprenant.'
     : 'Choose the Google account with the same email as your learner account.'
