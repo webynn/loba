@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,9 +8,11 @@
   <title>Loba Studio</title>
   <link rel="icon" href="/icons/icon-192.png">
   <link rel="stylesheet" href="/admin/style.css">
+  <script src="/admin/i18n.js" defer></script>
   <script src="/admin/app.js" defer></script>
 </head>
 <body>
+  <div class="studio-language" role="group" aria-label="Langue / Language"><button type="button" data-ui-lang="fr" lang="fr" aria-pressed="true">Français</button><button type="button" data-ui-lang="en" lang="en" aria-pressed="false">English</button></div>
   <svg class="sprite" aria-hidden="true" focusable="false">
     <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
     <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v15H5.5A1.5 1.5 0 0 0 4 19.5zM4 19.5A1.5 1.5 0 0 0 5.5 21H20M8 7h8M8 11h6"/></symbol>
@@ -35,30 +37,30 @@
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></symbol>
   </svg>
 
-  <div id="loading" class="loading" role="status"><img src="/icons/icon-192.png" alt="" width="48" height="48"><p>Opening Loba Studio…</p></div>
+  <div id="loading" class="loading" role="status"><img src="/icons/icon-192.png" alt="" width="48" height="48"><p><span data-i18n="Opening Loba Studio…">Ouverture de Loba Studio…</span></p></div>
 
   <section id="login" class="auth" hidden>
     <div class="auth-card">
       <div class="auth-brand"><img src="/icons/icon-192.png" alt="" width="40" height="40"><span>Loba <b>Studio</b></span></div>
       <form id="login-form" class="auth-form">
-        <h1>Sign in</h1>
-        <p class="muted">Create, review and publish lessons for every Loba language.</p>
-        <label class="field">Email<input type="email" name="email" autocomplete="username" required maxlength="254"></label>
-        <label class="field">Password<input type="password" name="password" autocomplete="current-password" required maxlength="256"></label>
+        <h1><span data-i18n="Sign in">Se connecter</span></h1>
+        <p class="muted"><span data-i18n="Create, review and publish lessons for every Loba language.">Créez, révisez et publiez des leçons pour chaque langue de Loba.</span></p>
+        <label class="field"><span data-i18n="Email">Adresse e-mail</span><input type="email" name="email" autocomplete="username" required maxlength="254"></label>
+        <label class="field"><span data-i18n="Password">Mot de passe</span><input type="password" name="password" autocomplete="current-password" required maxlength="256"></label>
         <p id="login-error" class="form-error" role="alert"></p>
-        <button class="btn primary block" type="submit">Sign in</button>
-        <p class="auth-switch">Joining the team? <a href="/signup">Request access</a></p>
+        <button class="btn primary block" type="submit"><span data-i18n="Sign in">Se connecter</span></button>
+        <p class="auth-switch"><span data-i18n="Joining the team?">Vous rejoignez l’équipe ?</span> <a href="/signup"><span data-i18n="Request access">Demander un accès</span></a></p>
       </form>
       <form id="signup-form" class="auth-form" hidden>
-        <h1>Request access</h1>
-        <p class="muted">An administrator reviews every request before you can edit lessons.</p>
-        <label class="field">Email<input type="email" name="email" autocomplete="username" required maxlength="254"></label>
-        <label class="field">Password<input type="password" name="password" autocomplete="new-password" required minlength="14" maxlength="256"><small>At least 14 characters.</small></label>
-        <label class="field">Confirm password<input type="password" name="confirmation" autocomplete="new-password" required minlength="14" maxlength="256"></label>
+        <h1><span data-i18n="Request access">Demander un accès</span></h1>
+        <p class="muted"><span data-i18n="An administrator reviews every request before you can edit lessons.">Un administrateur examine chaque demande avant de vous autoriser à modifier les leçons.</span></p>
+        <label class="field"><span data-i18n="Email">Adresse e-mail</span><input type="email" name="email" autocomplete="username" required maxlength="254"></label>
+        <label class="field"><span data-i18n="Password">Mot de passe</span><input type="password" name="password" autocomplete="new-password" required minlength="14" maxlength="256"><small><span data-i18n="At least 14 characters.">Au moins 14 caractères.</span></small></label>
+        <label class="field"><span data-i18n="Confirm password">Confirmer le mot de passe</span><input type="password" name="confirmation" autocomplete="new-password" required minlength="14" maxlength="256"></label>
         <p id="signup-error" class="form-error" role="alert"></p>
         <p id="signup-success" class="form-success" role="status" hidden></p>
-        <button class="btn primary block" type="submit">Request access</button>
-        <p class="auth-switch">Already on the team? <a href="/studio">Sign in</a></p>
+        <button class="btn primary block" type="submit"><span data-i18n="Request access">Demander un accès</span></button>
+        <p class="auth-switch"><span data-i18n="Already on the team?">Vous faites déjà partie de l’équipe ?</span> <a href="/studio"><span data-i18n="Sign in">Se connecter</span></a></p>
       </form>
     </div>
   </section>
@@ -67,68 +69,68 @@
     <aside class="side">
       <a class="side-brand" href="/studio"><img src="/icons/icon-192.png" alt="" width="30" height="30"><span>Loba <b>Studio</b></span></a>
       <nav class="side-nav" aria-label="Studio">
-        <button data-view="overview" class="nav-item"><svg><use href="#i-home"/></svg><span>Overview</span></button>
-        <button data-view="lessons" class="nav-item"><svg><use href="#i-book"/></svg><span>Lessons</span><small id="nav-count"></small></button>
-        <button data-view="languages" class="nav-item"><svg><use href="#i-globe"/></svg><span>Languages</span><small id="nav-languages"></small></button>
-        <button data-view="accounts" class="nav-item"><svg><use href="#i-users"/></svg><span>Team</span><small id="nav-pending" class="alert-count" hidden></small></button>
-        <button data-view="activity" class="nav-item"><svg><use href="#i-activity"/></svg><span>Activity</span></button>
+        <button data-view="overview" class="nav-item"><svg><use href="#i-home"/></svg><span><span data-i18n="Overview">Vue d’ensemble</span></span></button>
+        <button data-view="lessons" class="nav-item"><svg><use href="#i-book"/></svg><span><span data-i18n="Lessons">Leçons</span></span><small id="nav-count"></small></button>
+        <button data-view="languages" class="nav-item"><svg><use href="#i-globe"/></svg><span><span data-i18n="Languages">Langues</span></span><small id="nav-languages"></small></button>
+        <button data-view="accounts" class="nav-item"><svg><use href="#i-users"/></svg><span><span data-i18n="Team">Équipe</span></span><small id="nav-pending" class="alert-count" hidden></small></button>
+        <button data-view="activity" class="nav-item"><svg><use href="#i-activity"/></svg><span><span data-i18n="Activity">Activité</span></span></button>
       </nav>
       <div class="side-foot">
-        <a class="side-link" href="/learn" target="_blank" rel="noopener"><svg><use href="#i-external"/></svg>Open learner app</a>
-        <div class="me"><span id="avatar" class="me-avatar">L</span><span id="user-email" class="me-email"></span><button id="logout" class="icon-btn" title="Sign out" aria-label="Sign out"><svg><use href="#i-logout"/></svg></button></div>
+        <a class="side-link" href="/learn" target="_blank" rel="noopener"><svg><use href="#i-external"/></svg><span data-i18n="Open learner app">Ouvrir l’application d’apprentissage</span></a>
+        <div class="me"><span id="avatar" class="me-avatar">L</span><span id="user-email" class="me-email"></span><button id="logout" class="icon-btn" title="Se déconnecter" data-i18n-title="Sign out" aria-label="Se déconnecter" data-i18n-aria-label="Sign out"><svg><use href="#i-logout"/></svg></button></div>
       </div>
     </aside>
 
     <main class="main">
       <header class="page-head">
         <div>
-          <h1 id="page-title">Overview</h1>
+          <h1 id="page-title"><span data-i18n="Overview">Vue d’ensemble</span></h1>
           <p id="page-subtitle" class="muted"></p>
         </div>
-        <button id="primary-action" class="btn primary"><svg><use href="#i-plus"/></svg><span id="primary-label">New lesson</span></button>
+        <button id="primary-action" class="btn primary"><svg><use href="#i-plus"/></svg><span id="primary-label"><span data-i18n="New lesson">Nouvelle leçon</span></span></button>
       </header>
 
-      <div id="load-error" class="banner danger" hidden role="alert"><span></span><button id="retry" class="btn">Try again</button></div>
+      <div id="load-error" class="banner danger" hidden role="alert"><span></span><button id="retry" class="btn"><span data-i18n="Try again">Réessayer</span></button></div>
 
       <section id="overview-view" class="view">
         <div id="stats" class="stats"></div>
         <div class="split">
           <section class="panel">
-            <header class="panel-head"><h2>Languages</h2><button class="link-btn" data-view="languages">Manage</button></header>
+            <header class="panel-head"><h2><span data-i18n="Languages">Langues</span></h2><button class="link-btn" data-view="languages"><span data-i18n="Manage">Gérer</span></button></header>
             <div id="language-summary"></div>
           </section>
           <section class="panel">
-            <header class="panel-head"><h2>Recent activity</h2><button class="link-btn" data-view="activity">View all</button></header>
+            <header class="panel-head"><h2><span data-i18n="Recent activity">Activité récente</span></h2><button class="link-btn" data-view="activity"><span data-i18n="View all">Tout voir</span></button></header>
             <div id="recent-activity"></div>
           </section>
         </div>
         <section class="panel">
-          <header class="panel-head"><h2>Recently edited</h2><button class="link-btn" data-view="lessons">All lessons</button></header>
+          <header class="panel-head"><h2><span data-i18n="Recently edited">Modifications récentes</span></h2><button class="link-btn" data-view="lessons"><span data-i18n="All lessons">Toutes les leçons</span></button></header>
           <div id="recent-table"></div>
         </section>
       </section>
 
       <section id="lessons-view" class="view" hidden>
         <div class="toolbar">
-          <div class="segmented" role="group" aria-label="Status">
-            <button class="selected" data-status="all">All</button><button data-status="draft">Drafts</button><button data-status="changes">Changes</button><button data-status="published">Published</button>
+          <div class="segmented" role="group" aria-label="Statut" data-i18n-aria-label="Status">
+            <button class="selected" data-status="all"><span data-i18n="All">Tout</span></button><button data-status="draft"><span data-i18n="Drafts">Brouillons</span></button><button data-status="changes"><span data-i18n="Changes">Modifications</span></button><button data-status="published"><span data-i18n="Published">Publié</span></button>
           </div>
           <div class="toolbar-right">
-            <label class="search"><svg><use href="#i-search"/></svg><input id="search" type="search" placeholder="Search titles and words" aria-label="Search lessons"></label>
-            <select id="language-filter" aria-label="Language"></select>
+            <label class="search"><svg><use href="#i-search"/></svg><input id="search" type="search" placeholder="Rechercher des titres et des mots" data-i18n-placeholder="Search titles and words" aria-label="Rechercher des leçons" data-i18n-aria-label="Search lessons"></label>
+            <select id="language-filter" aria-label="Langue" data-i18n-aria-label="Language"></select>
           </div>
         </div>
         <section class="panel"><div id="lessons-table"></div></section>
       </section>
 
       <section id="languages-view" class="view" hidden>
-        <p class="hint">Learners see a language once it is <b>visible</b> and has at least one published lesson. Hidden languages stay private while your team builds them.</p>
+        <p class="hint"><span data-i18n="Learners see a language once it is">Les apprenants voient une langue lorsqu’elle est</span> <b><span data-i18n="visible">visible</span></b> <span data-i18n="and has at least one published lesson. Hidden languages stay private while your team builds them.">et comporte au moins une leçon publiée. Les langues masquées restent privées pendant leur préparation.</span></p>
         <section class="panel"><div id="languages-table"></div></section>
       </section>
 
       <section id="accounts-view" class="view" hidden>
         <section class="panel">
-          <header class="panel-head"><div><h2>Access requests</h2><p class="muted">Approved people can create, edit and publish lessons, and approve others. Email addresses are not verified, so only approve people you know.</p></div><button id="refresh-accounts" class="btn"><svg><use href="#i-refresh"/></svg>Refresh</button></header>
+          <header class="panel-head"><div><h2><span data-i18n="Access requests">Demandes d’accès</span></h2><p class="muted"><span data-i18n="Approved people can create, edit and publish lessons, and approve others. Email addresses are not verified, so only approve people you know.">Les personnes approuvées peuvent créer, modifier et publier des leçons, ainsi qu’approuver d’autres comptes. Les adresses e-mail ne sont pas vérifiées : n’approuvez que les personnes que vous connaissez.</span></p></div><button id="refresh-accounts" class="btn"><svg><use href="#i-refresh"/></svg><span data-i18n="Refresh">Actualiser</span></button></header>
           <p id="accounts-error" class="form-error pad" role="alert"></p>
           <div id="accounts-list"></div>
         </section>
@@ -143,73 +145,73 @@
   <dialog id="editor" class="sheet" aria-labelledby="editor-heading">
     <form id="lesson-form" novalidate>
       <header class="sheet-head">
-        <div><p id="editor-eyebrow" class="eyebrow"></p><h2 id="editor-heading">New lesson</h2></div>
+        <div><p id="editor-eyebrow" class="eyebrow"></p><h2 id="editor-heading"><span data-i18n="New lesson">Nouvelle leçon</span></h2></div>
         <span id="editor-status"></span>
-        <button type="button" id="close-editor" class="icon-btn" aria-label="Close"><svg><use href="#i-x"/></svg></button>
+        <button type="button" id="close-editor" class="icon-btn" aria-label="Fermer" data-i18n-aria-label="Close"><svg><use href="#i-x"/></svg></button>
       </header>
       <div class="sheet-body">
         <p id="editor-notice" class="banner"></p>
         <section class="form-section">
-          <h3>Details</h3>
+          <h3><span data-i18n="Details">Détails</span></h3>
           <div class="grid-3">
-            <label class="field">Language<select name="language" id="editor-language"></select></label>
-            <label class="field">Unit number<input name="position" type="number" min="1" max="999" required></label>
-            <label class="field">Icon<input name="icon" maxlength="20" required></label>
+            <label class="field"><span data-i18n="Language">Langue</span><select name="language" id="editor-language"></select></label>
+            <label class="field"><span data-i18n="Unit number">Numéro de l’unité</span><input name="position" type="number" min="1" max="999" required></label>
+            <label class="field"><span data-i18n="Icon">Icône</span><input name="icon" maxlength="20" required></label>
           </div>
           <div class="grid-2">
-            <label class="field">Title in French<input name="title" maxlength="160" required placeholder="Mbote ! Saluer"></label>
-            <label class="field">Title in English<input name="titleEn" maxlength="160" placeholder="Mbote! Greetings"></label>
+            <label class="field"><span data-i18n="Title in French">Titre en français</span><input name="title" maxlength="160" required placeholder="Mbote ! Saluer"></label>
+            <label class="field"><span data-i18n="Title in English">Titre en anglais</span><input name="titleEn" maxlength="160" placeholder="Mbote! Greetings"></label>
           </div>
-          <label class="field">Teaching note<textarea name="tip" rows="3" maxlength="3000" placeholder="A cultural detail or pronunciation tip learners see before the unit."></textarea></label>
+          <label class="field"><span data-i18n="Teaching note">Note pédagogique</span><textarea name="tip" rows="3" maxlength="3000" placeholder="Un détail culturel ou un conseil de prononciation présenté avant l’unité." data-i18n-placeholder="A cultural detail or pronunciation tip learners see before the unit."></textarea></label>
         </section>
         <section class="form-section">
-          <div class="section-row"><div><h3>Vocabulary <span id="word-count" class="count"></span></h3><p class="muted">Each word with its French and English meaning, and a recording if you have one.</p></div><button type="button" id="add-word" class="btn"><svg><use href="#i-plus"/></svg>Add word</button></div>
-          <div class="rows-head vocab-grid" aria-hidden="true"><span>#</span><span>Word or phrase</span><span>French</span><span>English</span><span>Recording</span><span></span></div>
+          <div class="section-row"><div><h3><span data-i18n="Vocabulary">Vocabulaire</span> <span id="word-count" class="count"></span></h3><p class="muted"><span data-i18n="Each word with its French and English meaning, and a recording if you have one.">Chaque mot avec sa traduction en français et en anglais, et un enregistrement si disponible.</span></p></div><button type="button" id="add-word" class="btn"><svg><use href="#i-plus"/></svg><span data-i18n="Add word">Ajouter un mot</span></button></div>
+          <div class="rows-head vocab-grid" aria-hidden="true"><span>#</span><span><span data-i18n="Word or phrase">Mot ou expression</span></span><span><span data-i18n="French">Français</span></span><span><span data-i18n="English">Anglais</span></span><span><span data-i18n="Recording">Enregistrement</span></span><span></span></div>
           <div id="word-rows"></div>
         </section>
         <section class="form-section">
-          <div class="section-row"><div><h3>Sentences <span id="sentence-count" class="count"></span></h3><p class="muted">Learners rebuild the answer from tiles. Distractors add wrong tiles.</p></div><button type="button" id="add-sentence" class="btn"><svg><use href="#i-plus"/></svg>Add sentence</button></div>
+          <div class="section-row"><div><h3><span data-i18n="Sentences">Phrases</span> <span id="sentence-count" class="count"></span></h3><p class="muted"><span data-i18n="Learners rebuild the answer from tiles. Distractors add wrong tiles.">Les apprenants reconstituent la réponse à partir d’étiquettes. Les distracteurs ajoutent des choix incorrects.</span></p></div><button type="button" id="add-sentence" class="btn"><svg><use href="#i-plus"/></svg><span data-i18n="Add sentence">Ajouter une phrase</span></button></div>
           <div id="sentence-rows"></div>
         </section>
         <p id="editor-error" class="form-error" role="alert"></p>
       </div>
       <footer class="sheet-foot">
-        <div><button type="button" id="delete-lesson" class="btn danger-ghost"><svg><use href="#i-trash"/></svg>Delete</button><button type="button" id="unpublish-lesson" class="btn">Unpublish</button></div>
-        <div><button type="button" id="preview-lesson" class="btn"><svg><use href="#i-eye"/></svg>Preview</button><button type="submit" id="save-lesson" class="btn">Save draft</button><button type="button" id="publish-lesson" class="btn primary"><svg><use href="#i-send"/></svg>Publish</button></div>
+        <div><button type="button" id="delete-lesson" class="btn danger-ghost"><svg><use href="#i-trash"/></svg><span data-i18n="Delete">Supprimer</span></button><button type="button" id="unpublish-lesson" class="btn"><span data-i18n="Unpublish">Dépublier</span></button></div>
+        <div><button type="button" id="preview-lesson" class="btn"><svg><use href="#i-eye"/></svg><span data-i18n="Preview">Aperçu</span></button><button type="submit" id="save-lesson" class="btn"><span data-i18n="Save draft">Enregistrer le brouillon</span></button><button type="button" id="publish-lesson" class="btn primary"><svg><use href="#i-send"/></svg><span data-i18n="Publish">Publier</span></button></div>
       </footer>
     </form>
   </dialog>
 
   <dialog id="language-dialog" class="modal" aria-labelledby="language-heading">
     <form id="language-form" novalidate>
-      <header class="modal-head"><h2 id="language-heading">Add a language</h2><button type="button" id="close-language" class="icon-btn" aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+      <header class="modal-head"><h2 id="language-heading"><span data-i18n="Add a language">Ajouter une langue</span></h2><button type="button" id="close-language" class="icon-btn" aria-label="Fermer" data-i18n-aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
       <div class="modal-body">
         <div class="grid-2">
-          <label class="field">Name in French<input name="name_fr" maxlength="60" required placeholder="Kikongo"></label>
-          <label class="field">Name in English<input name="name_en" maxlength="60" required placeholder="Kikongo"></label>
+          <label class="field"><span data-i18n="Name in French">Nom en français</span><input name="name_fr" maxlength="60" required placeholder="Kikongo"></label>
+          <label class="field"><span data-i18n="Name in English">Nom en anglais</span><input name="name_en" maxlength="60" required placeholder="Kikongo"></label>
         </div>
         <div class="grid-2">
-          <label class="field">Code<input name="code" maxlength="3" required pattern="[a-z]{2,3}" placeholder="kg" autocapitalize="off" spellcheck="false"><small>ISO 639 code, 2 or 3 letters. It can’t change later.</small></label>
-          <label class="field">Order<input name="position" type="number" min="1" max="999" required></label>
+          <label class="field"><span data-i18n="Code">Code</span><input name="code" maxlength="3" required pattern="[a-z]{2,3}" placeholder="kg" autocapitalize="off" spellcheck="false"><small><span data-i18n="ISO 639 code, 2 or 3 letters. It can’t change later.">Code ISO 639 de 2 ou 3 lettres. Il ne pourra plus être modifié.</span></small></label>
+          <label class="field"><span data-i18n="Order">Ordre</span><input name="position" type="number" min="1" max="999" required></label>
         </div>
         <div class="grid-2">
-          <label class="field">Greeting<input name="greeting" maxlength="40" placeholder="Mbote"><small>Shown on the landing page.</small></label>
-          <label class="field">Encouragement<input name="cheer" maxlength="60" placeholder="Malamu mingi !"><small>Said after a right answer.</small></label>
+          <label class="field"><span data-i18n="Greeting">Salutation</span><input name="greeting" maxlength="40" placeholder="Mbote"><small><span data-i18n="Shown on the landing page.">Affichée sur la page d’accueil.</span></small></label>
+          <label class="field"><span data-i18n="Encouragement">Encouragement</span><input name="cheer" maxlength="60" placeholder="Malamu mingi !"><small><span data-i18n="Said after a right answer.">Affiché après une bonne réponse.</span></small></label>
         </div>
         <div class="grid-2">
-          <label class="field">Where it’s spoken (French)<input name="region_fr" maxlength="120" placeholder="Kongo-Central, Kwilu, Kwango"></label>
-          <label class="field">Where it’s spoken (English)<input name="region_en" maxlength="120" placeholder="Kongo Central, Kwilu, Kwango"></label>
+          <label class="field"><span data-i18n="Where it’s spoken (French)">Régions où elle est parlée (français)</span><input name="region_fr" maxlength="120" placeholder="Kongo-Central, Kwilu, Kwango"></label>
+          <label class="field"><span data-i18n="Where it’s spoken (English)">Régions où elle est parlée (anglais)</span><input name="region_en" maxlength="120" placeholder="Kongo Central, Kwilu, Kwango"></label>
         </div>
-        <fieldset class="field"><legend>Colour</legend><div id="swatches" class="swatches"></div></fieldset>
-        <label class="switch-row"><input type="checkbox" name="published" role="switch"><span><b>Visible to learners</b><small>Only languages with published lessons appear in the app.</small></span></label>
+        <fieldset class="field"><legend><span data-i18n="Colour">Couleur</span></legend><div id="swatches" class="swatches"></div></fieldset>
+        <label class="switch-row"><input type="checkbox" name="published" role="switch"><span><b><span data-i18n="Visible to learners">Visible pour les apprenants</span></b><small><span data-i18n="Only languages with published lessons appear in the app.">Seules les langues comportant des leçons publiées apparaissent dans l’application.</span></small></span></label>
         <p id="language-error" class="form-error" role="alert"></p>
       </div>
-      <footer class="modal-foot"><button type="button" id="delete-language" class="btn danger-ghost"><svg><use href="#i-trash"/></svg>Delete</button><span></span><button type="button" id="cancel-language" class="btn">Cancel</button><button type="submit" class="btn primary">Save language</button></footer>
+      <footer class="modal-foot"><button type="button" id="delete-language" class="btn danger-ghost"><svg><use href="#i-trash"/></svg><span data-i18n="Delete">Supprimer</span></button><span></span><button type="button" id="cancel-language" class="btn"><span data-i18n="Cancel">Annuler</span></button><button type="submit" class="btn primary"><span data-i18n="Save language">Enregistrer la langue</span></button></footer>
     </form>
   </dialog>
 
   <dialog id="preview" class="modal preview" aria-labelledby="preview-heading">
-    <header class="modal-head"><h2 id="preview-heading">Learner preview</h2><button type="button" id="close-preview" class="icon-btn" aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+    <header class="modal-head"><h2 id="preview-heading"><span data-i18n="Learner preview">Aperçu pour l’apprenant</span></h2><button type="button" id="close-preview" class="icon-btn" aria-label="Fermer" data-i18n-aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
     <div id="preview-content" class="modal-body"></div>
   </dialog>
 

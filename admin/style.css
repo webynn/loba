@@ -319,3 +319,11 @@ dialog::backdrop { background: rgb(16 24 40 / 45%); }
   .toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Always available on sign-in and workspace screens, including phones. */
+.studio-language { display:flex; justify-content:flex-end; gap:4px; padding:8px 16px; background:var(--surface); position:relative; z-index:21; }
+.studio-language button { min-height:44px; padding:8px 12px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); }
+.studio-language button[aria-pressed="true"] { background:var(--brand-tint); color:var(--brand); border-color:var(--brand); font-weight:700; }
+.auth { min-height:calc(100vh - 60px); }
+.side { top:60px; }
+@media(max-width:760px) { .side { top:0; } }

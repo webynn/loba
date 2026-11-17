@@ -226,7 +226,7 @@ export function createApp(store, {origin, production = false, learnDir = new URL
         res.writeHead(302, {Location: studioHost ? '/studio' : '/learn/'}); return res.end();
       }
       if (path === '/learn' || path.startsWith('/learn/')) return await serveLearn(res, path, method, learnDir);
-      const files = {'/studio':'../admin/index.html','/studio/':'../admin/index.html','/admin':'../admin/index.html','/admin/':'../admin/index.html','/admin/app.js':'../admin/app.js','/admin/style.css':'../admin/style.css','/privacy.html':'../privacy.html','/manifest.webmanifest':'../manifest.webmanifest','/icons/icon-192.png':'../icons/icon-192.png','/icons/icon-512.png':'../icons/icon-512.png','/icons/apple-touch-icon.png':'../icons/apple-touch-icon.png'};
+      const files = {'/studio':'../admin/index.html','/studio/':'../admin/index.html','/admin':'../admin/index.html','/admin/':'../admin/index.html','/admin/i18n.js':'../admin/i18n.js','/admin/app.js':'../admin/app.js','/admin/style.css':'../admin/style.css','/privacy.html':'../privacy.html','/manifest.webmanifest':'../manifest.webmanifest','/icons/icon-192.png':'../icons/icon-192.png','/icons/icon-512.png':'../icons/icon-512.png','/icons/apple-touch-icon.png':'../icons/apple-touch-icon.png'};
       const file = path === '/signup' || path === '/signup/' ? '../admin/index.html' : files[path]; if (!file) throw fail(404,'Page not found.');
       res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
       const ext = file.split('.').at(-1);

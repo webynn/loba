@@ -1,3 +1,4 @@
+const { t } = StudioI18n;
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -8,10 +9,10 @@ let toastTimer;
 function toast(message) { $('toast').textContent=message; $('toast').hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('toast').hidden=true,3500); }
 async function api(path, options={}) {
   const response=await fetch(path,{credentials:'same-origin',...options,headers:{'Content-Type':'application/json',...options.headers}});
-  let data; try { data=await response.json(); } catch { throw new Error('The server did not return a valid response. Please try again.'); }
+  let data; try { data=await response.json(); } catch { throw new Error(t("The server did not return a valid response. Please try again.")); }
   if(!response.ok) {
     if(response.status===401 && path!=='/api/auth/login') { for(const d of document.querySelectorAll('dialog[open]')) d.close(); showLogin(); }
-    throw new Error(data.error || 'Request failed.');
+    throw new Error(t(data.error) || t("Request failed."));
   }
   return data;
 }
@@ -24,13 +25,13 @@ function showLogin() { $('loading').hidden=true; $('workspace').hidden=true; $('
 function showWorkspace(user) { $('loading').hidden=true; $('login').hidden=true; $('workspace').hidden=false; $('user-email').textContent=user.email; $('avatar').textContent=user.email[0].toUpperCase(); }
 
 const lang = code => state.languages.find(l=>l.code===code) || {code,name_en:code.toUpperCase(),name_fr:code.toUpperCase(),color:'#98a2b3',published:false,position:999};
-const langTag = code => { const l=lang(code); return `<span class="lang-tag" data-c="${esc(l.color)}">${esc(l.name_en)}</span>`; };
+const langTag = code => { const l=lang(code); return `<span class="lang-tag" data-c="${esc(l.color)}">${esc(l['name_'+StudioI18n.locale]||l.name_en)}</span>`; };
 function status(row) { return !row.published?'draft':row.version!==row.published_version?'changes':'published'; }
 const STATUS_LABEL = {draft:'Draft',changes:'Unpublished changes',published:'Published'};
-const badge = row => { const s=status(row); return `<span class="badge ${s}">${STATUS_LABEL[s]}</span>`; };
-function date(value) { return value?new Intl.DateTimeFormat('en',{month:'short',day:'numeric'}).format(new Date(value)):'—'; }
-function relative(value) { const n=Math.max(0,Date.now()-new Date(value)); return n<60000?'Just now':n<3600000?`${Math.floor(n/60000)} min ago`:n<86400000?`${Math.floor(n/3600000)} h ago`:date(value); }
-const plural = (n, one, many=one+'s') => `${n} ${n===1?one:many}`;
+const badge = row => { const s=status(row); return `<span class="badge ${s}">${t(STATUS_LABEL[s])}</span>`; };
+function date(value) { return value?new Intl.DateTimeFormat(StudioI18n.locale,{month:'short',day:'numeric'}).format(new Date(value)):'—'; }
+function relative(value) { const n=Math.max(0,Date.now()-new Date(value)); return n<60000?t("Just now"):n<3600000?t('{n} min ago',{n:Math.floor(n/60000)}):n<86400000?t('{n} h ago',{n:Math.floor(n/3600000)}):date(value); }
+const plural = (n, one, many=one+'s') => `${n} ${t(n===1?one:many)}`;
 const byCurriculum = (a,b) => lang(a.content.language).position-lang(b.content.language).position || a.content.language.localeCompare(b.content.language) || a.content.position-b.content.position;
 
 // Consistent vector artwork for curriculum topics; stored lesson content stays intact.
@@ -59,53 +60,53 @@ async function refresh() {
     const data=await api('/api/admin/lessons');
     Object.assign(state,{lessons:data.lessons,languages:data.languages,activity:data.activity,learners:data.learners});
     $('load-error').hidden=true; render();
-  } catch(error) { $('load-error').querySelector('span').textContent=error.message; $('load-error').hidden=false; }
+  } catch(error) { $('load-error').querySelector('span').textContent=t(error.message); $('load-error').hidden=false; }
 }
 
 // ---------- navigation ----------
-const VIEWS = {
-  overview:['Overview','Your curriculum at a glance.','lesson'],
-  lessons:['Lessons','Write, review and publish units for each language.','lesson'],
-  languages:['Languages','Every language Loba teaches, and whether learners can see it.','language'],
-  accounts:['Team','People who can edit lessons in Studio.',null],
-  activity:['Activity','What your team has created, edited and published.',null],
-};
+const views = () => ({
+  overview:[t("Overview"),t("Your curriculum at a glance."),'lesson'],
+  lessons:[t("Lessons"),t("Write, review and publish units for each language."),'lesson'],
+  languages:[t("Languages"),t("Every language Loba teaches, and whether learners can see it."),'language'],
+  accounts:[t("Team"),t("People who can edit lessons in Studio."),null],
+  activity:[t("Activity"),t("What your team has created, edited and published."),null],
+});
 function navigate(view) {
   state.view=view;
   if(view==='accounts') refreshAccounts();
   for(const section of document.querySelectorAll('.view')) section.hidden=section.id!==view+'-view';
   document.querySelectorAll('.nav-item').forEach(b=>{ const on=b.dataset.view===view; b.classList.toggle('active',on); if(on)b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
-  const [title,subtitle,action]=VIEWS[view];
+  const [title,subtitle,action]=views()[view];
   $('page-title').textContent=title; $('page-subtitle').textContent=subtitle; document.title=`${title} · Loba Studio`;
-  $('primary-action').hidden=!action; $('primary-label').textContent=action==='language'?'Add language':'New lesson';
+  $('primary-action').hidden=!action; $('primary-label').textContent=action==='language'?t("Add language"):t("New lesson");
   render(); window.scrollTo({top:0});
 }
 
 // ---------- rendering ----------
 function languageSummary() {
-  if(!state.languages.length) return `<div class="empty"><b>No languages yet.</b><span>Add the first language Loba should teach.</span></div>`;
+  if(!state.languages.length) return `<div class="empty"><b>${t("No languages yet.")}</b><span>${t("Add the first language Loba should teach.")}</span></div>`;
   return state.languages.map(l=>{
     const lessons=state.lessons.filter(x=>x.content.language===l.code), live=lessons.filter(x=>x.published).length;
     const pct=lessons.length?Math.round(live/lessons.length*100):0;
-    return `<button class="lang-row" data-filter-language="${esc(l.code)}"><span class="lang-swatch" data-c="${esc(l.color)}">${esc(l.code)}</span><span class="lang-name"><b>${esc(l.name_en)}</b><small>${plural(lessons.length,'unit')} · ${esc(l.region_en||l.name_fr)}</small></span><span class="meter-wrap"><span class="meter" data-c="${esc(l.color)}"><i data-pct="${pct}"></i></span><span class="meter-label">${live} of ${lessons.length} published</span></span><span class="badge ${l.published?'visible':'hidden'}">${l.published?'Visible':'Hidden'}</span></button>`;
+    return `<button class="lang-row" data-filter-language="${esc(l.code)}"><span class="lang-swatch" data-c="${esc(l.color)}">${esc(l.code)}</span><span class="lang-name"><b>${esc(l['name_'+StudioI18n.locale]||l.name_en)}</b><small>${plural(lessons.length,'unit')} · ${esc(l['region_'+StudioI18n.locale]||l.name_fr)}</small></span><span class="meter-wrap"><span class="meter" data-c="${esc(l.color)}"><i data-pct="${pct}"></i></span><span class="meter-label">${t('{live} of {total} published',{live,total:lessons.length})}</span></span><span class="badge ${l.published?'visible':'hidden'}">${l.published?t("Visible"):t("Hidden")}</span></button>`;
   }).join('');
 }
 const ACTIVITY = {created:['plus','created'],saved:['edit','edited'],published:['send','published'],unpublished:['refresh','unpublished'],deleted:['trash','deleted'],'account approved':['users','was approved for Studio'],'language added':['globe','added as a language'],'language updated':['globe','language settings updated'],'language deleted':['trash','removed as a language']};
 function activities(items) {
-  if(!items.length) return `<div class="empty"><b>Nothing yet.</b><span>Edits and publications will show up here.</span></div>`;
+  if(!items.length) return `<div class="empty"><b>${t("Nothing yet.")}</b><span>${t("Edits and publications will show up here.")}</span></div>`;
   return items.map(item=>{ const [ic,verb]=ACTIVITY[item.action]||['activity',item.action]; const kind=item.action.split(' ').at(-1);
-    return `<div class="activity"><span class="activity-icon ${esc(kind)}">${icon(ic)}</span><div><p><b>${esc(item.lesson_title)}</b> ${esc(verb)}</p><small>${esc(item.admin_email)} · ${relative(item.created_at)}</small></div></div>`; }).join('');
+    return `<div class="activity"><span class="activity-icon ${esc(kind)}">${icon(ic)}</span><div><p><b>${esc(item.lesson_title)}</b> ${esc(t(verb))}</p><small>${esc(item.admin_email)} · ${relative(item.created_at)}</small></div></div>`; }).join('');
 }
-function lessonTable(rows, {empty='No lessons match.'}={}) {
-  if(!rows.length) return `<div class="empty"><b>${empty}</b><span>Try another filter, or start a new unit.</span><button class="btn new-lesson">${icon('plus')}New lesson</button></div>`;
-  return `<table class="table"><thead><tr><th>Lesson</th><th>Language</th><th>Status</th><th>Content</th><th>Updated</th></tr></thead><tbody>${rows.map(row=>`<tr data-edit="${esc(row.id)}"><td><button class="lesson-cell" data-edit="${esc(row.id)}">${lessonIcon(row.content)}<span><b>${esc(row.content.title)}</b><small>Unit ${row.content.position}${row.content.titleEn?' · '+esc(row.content.titleEn):''}</small></span></button></td><td class="indent">${langTag(row.content.language)}</td><td class="indent">${badge(row)}</td><td class="num hide-sm">${plural(row.content.words.length,'word')} · ${plural(row.content.sentences.length,'sentence')}</td><td class="num hide-sm">${date(row.updated_at)}</td></tr>`).join('')}</tbody></table>`;
+function lessonTable(rows, {empty=t("No lessons match.")}={}) {
+  if(!rows.length) return `<div class="empty"><b>${empty}</b><span>${t("Try another filter, or start a new unit.")}</span><button class="btn new-lesson">${icon('plus')}${t("New lesson")}</button></div>`;
+  return `<table class="table"><thead><tr><th>${t("Lesson")}</th><th>${t("Language")}</th><th>${t("Status")}</th><th>${t("Content")}</th><th>${t("Updated")}</th></tr></thead><tbody>${rows.map(row=>`<tr data-edit="${esc(row.id)}"><td><button class="lesson-cell" data-edit="${esc(row.id)}">${lessonIcon(row.content)}<span><b>${esc(row.content.title)}</b><small>${t('Unit {n}',{n:row.content.position})}${row.content.titleEn?' · '+esc(row.content.titleEn):''}</small></span></button></td><td class="indent">${langTag(row.content.language)}</td><td class="indent">${badge(row)}</td><td class="num hide-sm">${plural(row.content.words.length,'word')} · ${plural(row.content.sentences.length,'sentence')}</td><td class="num hide-sm">${date(row.updated_at)}</td></tr>`).join('')}</tbody></table>`;
 }
 function languagesTable() {
-  if(!state.languages.length) return `<div class="empty"><b>No languages yet.</b><button class="btn new-language">${icon('plus')}Add language</button></div>`;
-  return `<table class="table"><thead><tr><th>Language</th><th>Code</th><th>Greeting</th><th>Units</th><th>Learners see it</th></tr></thead><tbody>${state.languages.map(l=>{
+  if(!state.languages.length) return `<div class="empty"><b>${t("No languages yet.")}</b><button class="btn new-language">${icon('plus')}${t("Add language")}</button></div>`;
+  return `<table class="table"><thead><tr><th>${t("Language")}</th><th>${t("Code")}</th><th>${t("Greeting")}</th><th>${t("Units")}</th><th>${t("Learners see it")}</th></tr></thead><tbody>${state.languages.map(l=>{
     const lessons=state.lessons.filter(x=>x.content.language===l.code), live=lessons.filter(x=>x.published).length;
     const shown=l.published&&live>0;
-    return `<tr data-edit-language="${esc(l.code)}"><td><span class="lesson-cell"><span class="lang-swatch" data-c="${esc(l.color)}">${esc(l.code)}</span><span><b>${esc(l.name_en)}</b><small>${esc(l.name_fr)}${l.region_en?' · '+esc(l.region_en):''}</small></span></span></td><td class="hide-sm"><span class="code">${esc(l.code)}</span></td><td class="hide-sm">${esc(l.greeting)||'<span class="muted">—</span>'}</td><td class="num indent">${live} published · ${lessons.length} total</td><td class="indent"><span class="badge ${shown?'visible':'hidden'}">${shown?'Visible':l.published?'Visible, no published units':'Hidden'}</span></td></tr>`;
+    return `<tr data-edit-language="${esc(l.code)}"><td><span class="lesson-cell"><span class="lang-swatch" data-c="${esc(l.color)}">${esc(l.code)}</span><span><b>${esc(l['name_'+StudioI18n.locale]||l.name_en)}</b><small>${esc(l.name_fr)}${l['region_'+StudioI18n.locale]?' · '+esc(l['region_'+StudioI18n.locale]):''}</small></span></span></td><td class="hide-sm"><span class="code">${esc(l.code)}</span></td><td class="hide-sm">${esc(l.greeting)||'<span class="muted">—</span>'}</td><td class="num indent">${t('{live} published · {total} total',{live,total:lessons.length})}</td><td class="indent"><span class="badge ${shown?'visible':'hidden'}">${shown?t("Visible"):l.published?t("Visible, no published units"):t("Hidden")}</span></td></tr>`;
   }).join('')}</tbody></table>`;
 }
 function render() {
@@ -113,13 +114,13 @@ function render() {
   $('nav-count').textContent=all.length||''; $('nav-languages').textContent=state.languages.length||'';
   $('nav-pending').textContent=state.pending; $('nav-pending').hidden=!state.pending;
   const words=all.reduce((n,l)=>n+l.content.words.length,0);
-  $('stats').innerHTML=[['Lessons',all.length,`${plural(state.languages.length,'language')}`],['Published',live,'Live in the learner app'],['Needs review',review,'Drafts and unpublished changes'],['Learners',state.learners,`${words.toLocaleString('en')} words taught`]]
-    .map(([label,value,sub])=>`<div class="stat"><span>${label}</span><b>${value.toLocaleString('en')}</b><small>${sub}</small></div>`).join('');
+  $('stats').innerHTML=[[t("Lessons"),all.length,`${plural(state.languages.length,'language')}`],[t("Published"),live,t("Live in the learner app")],[t("Needs review"),review,t("Drafts and unpublished changes")],[t("Learners"),state.learners,words===1?t('1 word taught'):t('{n} words taught',{n:words.toLocaleString(StudioI18n.locale)})]]
+    .map(([label,value,sub])=>`<div class="stat"><span>${label}</span><b>${value.toLocaleString(StudioI18n.locale)}</b><small>${sub}</small></div>`).join('');
   $('language-summary').innerHTML=languageSummary();
   $('recent-activity').innerHTML=activities(state.activity.slice(0,5)); $('activity-list').innerHTML=activities(state.activity);
-  $('recent-table').innerHTML=lessonTable([...all].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,5),{empty:'No lessons yet.'});
-  const options=state.languages.map(l=>`<option value="${esc(l.code)}">${esc(l.name_en)}</option>`).join('');
-  $('language-filter').innerHTML=`<option value="all">All languages</option>${options}`; $('language-filter').value=state.language;
+  $('recent-table').innerHTML=lessonTable([...all].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,5),{empty:t("No lessons yet.")});
+  const options=state.languages.map(l=>`<option value="${esc(l.code)}">${esc(l['name_'+StudioI18n.locale]||l.name_en)}</option>`).join('');
+  $('language-filter').innerHTML=`<option value="all">${t("All languages")}</option>${options}`; $('language-filter').value=state.language;
   const query=state.search.toLowerCase().trim();
   const filtered=all.filter(row=>(state.language==='all'||row.content.language===state.language)
     && (state.status==='all'||state.status==='published'&&!!row.published||status(row)===state.status)
@@ -132,29 +133,29 @@ function render() {
 // ---------- recordings ----------
 let recorder=null, player=null;
 async function uploadAudio(blob) {
-  if(blob.size>1500000) throw new Error('Keep recordings under 1.5 MB.');
+  if(blob.size>1500000) throw new Error(t("Keep recordings under 1.5 MB."));
   const response=await fetch('/api/admin/audio',{method:'POST',credentials:'same-origin',headers:{'Content-Type':blob.type||'application/octet-stream'},body:blob});
-  const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.error||'Upload failed.'); return data.id;
+  const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(t(data.error)||t("Upload failed.")); return data.id;
 }
 function audioControls(row) {
   const input=row.querySelector('[data-field="audio"]'), stateEl=row.querySelector('.audio .state'), msg=row.querySelector('.audio-msg');
   const [record,upload,play,clear]=['record','upload','play','clear'].map(n=>row.querySelector(`.a-${n}`)), file=row.querySelector('input[type=file]');
-  const paint=(note='')=>{ const has=!!input.value; play.hidden=clear.hidden=!has; record.classList.toggle('has',has); stateEl.textContent=has?'Recorded':''; stateEl.classList.toggle('ok',has); msg.textContent=note; };
-  const attach=async blob=>{ stateEl.textContent='Uploading…'; try{ input.value=await uploadAudio(blob); state.dirty=true; paint(); }catch(error){ paint(error.message); } };
+  const paint=(note='')=>{ const has=!!input.value; play.hidden=clear.hidden=!has; record.classList.toggle('has',has); stateEl.textContent=has?t("Recorded"):''; stateEl.classList.toggle('ok',has); msg.textContent=note; };
+  const attach=async blob=>{ stateEl.textContent=t("Uploading…"); try{ input.value=await uploadAudio(blob); state.dirty=true; paint(); }catch(error){ paint(t(error.message)); } };
   record.onclick=async()=>{
     if(recorder){ recorder.stop(); return; }
-    if(!navigator.mediaDevices||!window.MediaRecorder){ paint('This browser can’t record. Upload a file instead.'); return; }
+    if(!navigator.mediaDevices||!window.MediaRecorder){ paint(t("This browser can’t record. Upload a file instead.")); return; }
     try {
       const stream=await navigator.mediaDevices.getUserMedia({audio:true}); const chunks=[]; const active=recorder=new MediaRecorder(stream);
       active.ondataavailable=e=>chunks.push(e.data);
-      active.onstop=()=>{ stream.getTracks().forEach(t=>t.stop()); recorder=null; record.classList.remove('recording'); record.innerHTML=icon('mic'); record.setAttribute('aria-label','Record'); attach(new Blob(chunks,{type:active.mimeType})); };
-      active.start(); record.classList.add('recording'); record.innerHTML=icon('stop'); record.setAttribute('aria-label','Stop recording'); stateEl.textContent='Recording…';
+      active.onstop=()=>{ stream.getTracks().forEach(t=>t.stop()); recorder=null; record.classList.remove('recording'); record.innerHTML=icon('mic'); record.setAttribute('aria-label',t("Record")); attach(new Blob(chunks,{type:active.mimeType})); };
+      active.start(); record.classList.add('recording'); record.innerHTML=icon('stop'); record.setAttribute('aria-label',t("Stop recording")); stateEl.textContent=t("Recording…");
       setTimeout(()=>{ if(recorder===active) active.stop(); },15000);
-    } catch { paint('Microphone access was blocked. Allow it, or upload a file.'); }
+    } catch { paint(t("Microphone access was blocked. Allow it, or upload a file.")); }
   };
   upload.onclick=()=>file.click();
   file.onchange=()=>{ if(file.files[0]) attach(file.files[0]); file.value=''; };
-  play.onclick=()=>{ player?.pause(); player=new Audio(`/api/v1/audio/${input.value}`); player.play().catch(()=>paint('This recording can’t be played here.')); };
+  play.onclick=()=>{ player?.pause(); player=new Audio(`/api/v1/audio/${input.value}`); player.play().catch(()=>paint(t("This recording can’t be played here."))); };
   clear.onclick=()=>{ input.value=''; state.dirty=true; paint(); };
   paint();
 }
@@ -167,30 +168,30 @@ function renumber() {
 }
 function wordRow(word={term:'',fr:'',en:''}) {
   const row=document.createElement('div'); row.className='word-row vocab-grid';
-  row.innerHTML=`<span class="idx"></span><input class="term" data-field="term" value="${esc(word.term)}" maxlength="300" required placeholder="Mbote" aria-label="Word or phrase"><input class="fr" data-field="fr" value="${esc(word.fr)}" maxlength="300" required placeholder="Bonjour" aria-label="French meaning"><input class="en" data-field="en" value="${esc(word.en)}" maxlength="300" placeholder="Hello" aria-label="English meaning"><span class="audio"><input type="hidden" data-field="audio" value="${esc(word.audio||'')}"><button type="button" class="icon-btn sm a-record" aria-label="Record">${icon('mic')}</button><button type="button" class="icon-btn sm a-upload" aria-label="Upload audio">${icon('upload')}</button><button type="button" class="icon-btn sm a-play" aria-label="Listen" hidden>${icon('play')}</button><button type="button" class="icon-btn sm a-clear danger" aria-label="Remove recording" hidden>${icon('x')}</button><input type="file" accept="audio/*" hidden><span class="state"></span></span><button type="button" class="icon-btn sm danger remove" aria-label="Remove word">${icon('trash')}</button><p class="audio-msg"></p>`;
+  row.innerHTML=`<span class="idx"></span><input class="term" data-field="term" value="${esc(word.term)}" maxlength="300" required placeholder="Mbote" aria-label="${esc(t("Word or phrase"))}"><input class="fr" data-field="fr" value="${esc(word.fr)}" maxlength="300" required placeholder="Bonjour" aria-label="${esc(t("French meaning"))}"><input class="en" data-field="en" value="${esc(word.en)}" maxlength="300" placeholder="Hello" aria-label="${esc(t("English meaning"))}"><span class="audio"><input type="hidden" data-field="audio" value="${esc(word.audio||'')}"><button type="button" class="icon-btn sm a-record" aria-label="${esc(t("Record"))}">${icon('mic')}</button><button type="button" class="icon-btn sm a-upload" aria-label="${esc(t("Upload audio"))}">${icon('upload')}</button><button type="button" class="icon-btn sm a-play" aria-label="${esc(t("Listen"))}" hidden>${icon('play')}</button><button type="button" class="icon-btn sm a-clear danger" aria-label="${esc(t("Remove recording"))}" hidden>${icon('x')}</button><input type="file" accept="audio/*" hidden><span class="state"></span></span><button type="button" class="icon-btn sm danger remove" aria-label="${esc(t("Remove word"))}">${icon('trash')}</button><p class="audio-msg"></p>`;
   $('word-rows').append(row); audioControls(row); renumber(); return row;
 }
 function sentenceRow(sentence={fr:'',en:'',answer:'',distractors:[]}) {
   const row=document.createElement('div'); row.className='sentence-row';
-  row.innerHTML=`<span class="idx"></span><div class="sentence-fields"><label class="field">Prompt in French<input data-field="fr" value="${esc(sentence.fr)}" required maxlength="600" placeholder="Je vais bien"></label><label class="field">Prompt in English<input data-field="en" value="${esc(sentence.en)}" maxlength="600" placeholder="I’m fine"></label><label class="field">Correct answer<input data-field="answer" value="${esc(sentence.answer)}" required maxlength="600" placeholder="Nazali malamu"></label><label class="field">Distractors<input data-field="distractors" value="${esc(sentence.distractors.join(', '))}" placeholder="Ozali, yo"><small>Separate with commas.</small></label></div><button type="button" class="icon-btn sm danger remove" aria-label="Remove sentence">${icon('trash')}</button>`;
+  row.innerHTML=`<span class="idx"></span><div class="sentence-fields"><label class="field">${t("Prompt in French")}<input data-field="fr" value="${esc(sentence.fr)}" required maxlength="600" placeholder="Je vais bien"></label><label class="field">${t("Prompt in English")}<input data-field="en" value="${esc(sentence.en)}" maxlength="600" placeholder="I’m fine"></label><label class="field">${t("Correct answer")}<input data-field="answer" value="${esc(sentence.answer)}" required maxlength="600" placeholder="Nazali malamu"></label><label class="field">${t("Distractors")}<input data-field="distractors" value="${esc(sentence.distractors.join(', '))}" placeholder="Ozali, yo"><small>${t("Separate with commas.")}</small></label></div><button type="button" class="icon-btn sm danger remove" aria-label="${esc(t("Remove sentence"))}">${icon('trash')}</button>`;
   $('sentence-rows').append(row); renumber(); return row;
 }
 function editorChrome(row, content) {
   const l=lang(content.language);
-  $('editor-heading').textContent=row?content.title||'Untitled lesson':'New lesson';
-  $('editor-eyebrow').textContent=row?`${l.name_en} · Unit ${content.position}`:'Draft';
+  $('editor-heading').textContent=row?content.title||t("Untitled lesson"):t("New lesson");
+  $('editor-eyebrow').textContent=row?`${l['name_'+StudioI18n.locale]||l.name_en} · ${t('Unit {n}',{n:content.position})}`:t("Draft");
   $('editor-status').innerHTML=row?badge(row):'';
   const notice=$('editor-notice');
   notice.className='banner'+(row?.published?' live':'');
-  notice.textContent=row?.published?'This lesson is live. Saving keeps your edits private until you publish them.':'Drafts are private. Publish when the unit is ready for learners.';
+  notice.textContent=row?.published?t("This lesson is live. Saving keeps your edits private until you publish them."):t("Drafts are private. Publish when the unit is ready for learners.");
   $('delete-lesson').hidden=!row; $('unpublish-lesson').hidden=!row?.published;
 }
 function openEditor(id) {
-  if(!state.languages.length){ toast('Add a language first.'); openLanguage(); return; }
+  if(!state.languages.length){ toast(t("Add a language first.")); openLanguage(); return; }
   const row=state.lessons.find(l=>l.id===id); state.editing=row||null; state.dirty=false;
   const language=state.language!=='all'?state.language:state.languages[0].code;
   const content=row?.content||{language,position:Math.max(0,...state.lessons.filter(l=>l.content.language===language).map(l=>l.content.position))+1,title:'',titleEn:'',icon:'📚',tip:'',words:[],sentences:[]};
-  $('editor-language').innerHTML=state.languages.map(l=>`<option value="${esc(l.code)}">${esc(l.name_en)}</option>`).join('')
+  $('editor-language').innerHTML=state.languages.map(l=>`<option value="${esc(l.code)}">${esc(l['name_'+StudioI18n.locale]||l.name_en)}</option>`).join('')
     + (state.languages.some(l=>l.code===content.language)?'':`<option value="${esc(content.language)}">${esc(content.language)}</option>`);
   for(const name of ['language','position','title','titleEn','icon','tip']) $('lesson-form').elements.namedItem(name).value=content[name];
   $('word-rows').replaceChildren(); content.words.forEach(w=>wordRow(w));
@@ -221,7 +222,7 @@ function savedRow(row) {
 async function save(publish=false) {
   if(state.busy || !validEditor()) return;
   const data=readEditor();
-  if(publish&&!data.words.length) { $('editor-error').textContent='Add at least one word before publishing.'; return; }
+  if(publish&&!data.words.length) { $('editor-error').textContent=t("Add at least one word before publishing."); return; }
   busy(true); $('editor-error').textContent='';
   try {
     let row=state.editing;
@@ -230,25 +231,25 @@ async function save(publish=false) {
       row=result.lesson; savedRow(row);
     }
     if(publish) { const result=await api(`/api/admin/lessons/${row.id}/publish`,{method:'POST',body:JSON.stringify({version:row.version})}); savedRow(result.lesson); }
-    $('editor').close(); toast(publish?'Published. Learners will see it on their next visit.':'Draft saved.'); await refresh();
-  } catch(error) { $('editor-error').textContent=error.message; }
+    $('editor').close(); toast(publish?t("Published. Learners will see it on their next visit."):t("Draft saved.")); await refresh();
+  } catch(error) { $('editor-error').textContent=t(error.message); }
   finally { busy(false); }
 }
 async function mutateLesson(action) {
   if(state.busy || !state.editing) return;
   const row=state.editing;
-  const message=action==='delete'?`Delete “${row.content.title}”? This can’t be undone.`:`Unpublish “${row.content.title}”? Learners will stop seeing it.`;
-  if(!confirm(message+(state.dirty?' Unsaved edits will be lost.':''))) return;
+  const message=action==='delete'?t('Delete “{title}”? This can’t be undone.',{title:row.content.title}):t('Unpublish “{title}”? Learners will stop seeing it.',{title:row.content.title});
+  if(!confirm(message+(state.dirty?' '+t('Unsaved edits will be lost.'):''))) return;
   busy(true); $('editor-error').textContent='';
   try {
     await api(`/api/admin/lessons/${row.id}${action==='unpublish'?'/unpublish':''}`,{method:action==='delete'?'DELETE':'POST',body:JSON.stringify({version:row.version})});
-    state.dirty=false; $('editor').close(); toast(action==='delete'?'Lesson deleted.':'Lesson moved back to draft.'); await refresh();
-  } catch(error) { $('editor-error').textContent=error.message; } finally { busy(false); }
+    state.dirty=false; $('editor').close(); toast(action==='delete'?t("Lesson deleted."):t("Lesson moved back to draft.")); await refresh();
+  } catch(error) { $('editor-error').textContent=t(error.message); } finally { busy(false); }
 }
-function closeEditor() { if(state.busy) return; if(state.dirty&&!confirm('Discard your unsaved changes?')) return; state.dirty=false; $('editor').close(); }
+function closeEditor() { if(state.busy) return; if(state.dirty&&!confirm(t("Discard your unsaved changes?"))) return; state.dirty=false; $('editor').close(); }
 function preview() {
   const c=readEditor(), l=lang(c.language);
-  $('preview-content').innerHTML=`<div class="preview-title"><span class="big">${esc(c.icon)}</span><p class="eyebrow">${esc(l.name_en)} · Unit ${c.position}</p><h2>${esc(c.title)||'Untitled lesson'}</h2>${c.titleEn?`<p class="muted">${esc(c.titleEn)}</p>`:''}</div>${c.tip?`<p class="preview-note">${esc(c.tip)}</p>`:''}<h3>Words</h3>${c.words.length?`<div class="preview-list">${c.words.map(w=>`<div><b>${esc(w.term)}</b><span>${esc(w.fr)}${w.en?' · '+esc(w.en):''}</span></div>`).join('')}</div>`:'<p class="muted">No words yet.</p>'}${c.sentences.length?`<h3>Sentences</h3><div class="preview-list">${c.sentences.map(s=>`<div><b>${esc(s.fr)}</b><span>${esc(s.answer)}</span></div>`).join('')}</div>`:''}`;
+  $('preview-content').innerHTML=`<div class="preview-title"><span class="big">${esc(c.icon)}</span><p class="eyebrow">${esc(l['name_'+StudioI18n.locale]||l.name_en)} · ${t('Unit {n}',{n:c.position})}</p><h2>${esc(c.title)||t("Untitled lesson")}</h2>${c.titleEn?`<p class="muted">${esc(c.titleEn)}</p>`:''}</div>${c.tip?`<p class="preview-note">${esc(c.tip)}</p>`:''}<h3>${t("Words")}</h3>${c.words.length?`<div class="preview-list">${c.words.map(w=>`<div><b>${esc(w.term)}</b><span>${esc(w.fr)}${w.en?' · '+esc(w.en):''}</span></div>`).join('')}</div>`:'<p class="muted">${t("No words yet.")}</p>'}${c.sentences.length?`<h3>${t("Sentences")}</h3><div class="preview-list">${c.sentences.map(s=>`<div><b>${esc(s.fr)}</b><span>${esc(s.answer)}</span></div>`).join('')}</div>`:''}`;
   $('preview').showModal();
 }
 
@@ -260,11 +261,11 @@ function openLanguage(code) {
   for(const name of ['name_fr','name_en','code','greeting','cheer','region_fr','region_en','position']) form.elements.namedItem(name).value=value[name];
   form.elements.namedItem('code').disabled=!!l; form.elements.namedItem('published').checked=value.published;
   const colors=SWATCHES.includes(value.color)?SWATCHES:[...SWATCHES,value.color];
-  $('swatches').innerHTML=colors.map(c=>`<label title="${c}"><input type="radio" name="color" value="${c}" ${c===value.color?'checked':''} aria-label="Colour ${c}"><span data-c="${c}"></span></label>`).join('');
+  $('swatches').innerHTML=colors.map(c=>`<label title="${c}"><input type="radio" name="color" value="${c}" ${c===value.color?'checked':''} aria-label="${t('Colour {color}',{color:c})}"><span data-c="${c}"></span></label>`).join('');
   applyVars($('swatches'));
   const used=l&&state.lessons.some(x=>x.content.language===l.code);
   $('delete-language').hidden=!l||used;
-  $('language-heading').textContent=l?`Edit ${l.name_en}`:'Add a language';
+  $('language-heading').textContent=l?t('Edit {name}',{name:l['name_'+StudioI18n.locale]||l.name_en}):t("Add a language");
   $('language-error').textContent=''; $('language-dialog').showModal();
 }
 async function saveLanguage(event) {
@@ -275,51 +276,51 @@ async function saveLanguage(event) {
   const editing=state.editingLanguage;
   try {
     await api(editing?`/api/admin/languages/${editing.code}`:'/api/admin/languages',{method:editing?'PUT':'POST',body:JSON.stringify(body)});
-    $('language-dialog').close(); toast(editing?'Language saved.':`${body.name_en} added. Create its first lesson when you’re ready.`); await refresh();
-  } catch(error) { $('language-error').textContent=error.message; }
+    $('language-dialog').close(); toast(editing?t("Language saved."):t('{name} added. Create its first lesson when you’re ready.',{name:body['name_'+StudioI18n.locale]})); await refresh();
+  } catch(error) { $('language-error').textContent=t(error.message); }
 }
 async function deleteLanguage() {
-  const l=state.editingLanguage; if(!l||!confirm(`Delete ${l.name_en}? This can’t be undone.`)) return;
-  try { await api(`/api/admin/languages/${l.code}`,{method:'DELETE',body:'{}'}); $('language-dialog').close(); toast('Language deleted.'); await refresh(); }
-  catch(error) { $('language-error').textContent=error.message; }
+  const l=state.editingLanguage; if(!l||!confirm(t('Delete {name}? This can’t be undone.',{name:l['name_'+StudioI18n.locale]||l.name_en}))) return;
+  try { await api(`/api/admin/languages/${l.code}`,{method:'DELETE',body:'{}'}); $('language-dialog').close(); toast(t("Language deleted.")); await refresh(); }
+  catch(error) { $('language-error').textContent=t(error.message); }
 }
 
 // ---------- team ----------
 async function refreshAccounts(quiet=false) {
-  if(!quiet) { $('accounts-error').textContent=''; $('accounts-list').innerHTML='<div class="empty">Loading…</div>'; }
+  if(!quiet) { $('accounts-error').textContent=''; $('accounts-list').innerHTML='<div class="empty">${t("Loading…")}</div>'; }
   try {
     const {accounts}=await api('/api/admin/accounts'); state.pending=accounts.length; render();
-    $('accounts-list').innerHTML=accounts.length?accounts.map(a=>`<div class="request"><div><b>${esc(a.email)}</b><small>Requested ${date(a.created_at)}</small></div><button class="btn" data-approve="${esc(a.id)}" data-email="${esc(a.email)}">${icon('check')}Approve</button></div>`).join(''):'<div class="empty"><b>No pending requests.</b><span>New requests from /signup appear here.</span></div>';
-  } catch(error) { if(!quiet){ $('accounts-list').textContent=''; $('accounts-error').textContent=error.message; } }
+    $('accounts-list').innerHTML=accounts.length?accounts.map(a=>`<div class="request"><div><b>${esc(a.email)}</b><small>${t('Requested {date}',{date:date(a.created_at)})}</small></div><button class="btn" data-approve="${esc(a.id)}" data-email="${esc(a.email)}">${icon('check')}${t("Approve")}</button></div>`).join(''):'<div class="empty"><b>${t("No pending requests.")}</b><span>${t("New requests from /signup appear here.")}</span></div>';
+  } catch(error) { if(!quiet){ $('accounts-list').textContent=''; $('accounts-error').textContent=t(error.message); } }
 }
 $('refresh-accounts').onclick=()=>refreshAccounts();
 $('accounts-list').onclick=async event=>{
   const button=event.target.closest('[data-approve]'); if(!button) return;
-  if(!confirm(`Give ${button.dataset.email} access to edit and publish all lessons?`)) return;
+  if(!confirm(t('Give {email} access to edit and publish all lessons?',{email:button.dataset.email}))) return;
   button.disabled=true;
-  try { await api(`/api/admin/accounts/${button.dataset.approve}/approve`,{method:'POST',body:'{}'}); toast('Approved. They can sign in now.'); await refreshAccounts(); await refresh(); }
-  catch(error) { $('accounts-error').textContent=error.message; button.disabled=false; }
+  try { await api(`/api/admin/accounts/${button.dataset.approve}/approve`,{method:'POST',body:'{}'}); toast(t("Approved. They can sign in now.")); await refreshAccounts(); await refresh(); }
+  catch(error) { $('accounts-error').textContent=t(error.message); button.disabled=false; }
 };
 
 // ---------- auth ----------
 $('signup-form').onsubmit=async event=>{
   event.preventDefault(); const form=event.currentTarget, button=form.querySelector('button[type=submit]');
   const fields=new FormData(form); $('signup-error').textContent='';
-  if(fields.get('password')!==fields.get('confirmation')) { $('signup-error').textContent='The passwords don’t match.'; return; }
+  if(fields.get('password')!==fields.get('confirmation')) { $('signup-error').textContent=t("The passwords don’t match."); return; }
   button.disabled=true;
   try {
     const result=await api('/api/auth/signup',{method:'POST',body:JSON.stringify({email:fields.get('email'),password:fields.get('password')})});
     form.reset(); form.querySelectorAll('label').forEach(el=>el.hidden=true); button.hidden=true;
-    $('signup-success').textContent=result.message; $('signup-success').hidden=false;
-  } catch(error) { $('signup-error').textContent=error.message; }
+    $('signup-success').textContent=t(result.message); $('signup-success').hidden=false;
+  } catch(error) { $('signup-error').textContent=t(error.message); }
   finally { button.disabled=false; }
 };
 $('login-form').addEventListener('submit',async event=>{
   event.preventDefault(); const button=event.currentTarget.querySelector('button'); button.disabled=true; $('login-error').textContent='';
   try { const {user}=await api('/api/auth/login',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(event.currentTarget)))}); $('login-form').reset(); await start(user); }
-  catch(error){ $('login-error').textContent=error.message; } finally { button.disabled=false; }
+  catch(error){ $('login-error').textContent=t(error.message); } finally { button.disabled=false; }
 });
-$('logout').onclick=async()=>{ try{ await api('/api/auth/logout',{method:'POST',body:'{}'}); Object.assign(state,{lessons:[],activity:[],languages:[]}); showLogin(); }catch(error){ toast(error.message); } };
+$('logout').onclick=async()=>{ try{ await api('/api/auth/logout',{method:'POST',body:'{}'}); Object.assign(state,{lessons:[],activity:[],languages:[]}); showLogin(); }catch(error){ toast(t(error.message)); } };
 
 // ---------- events ----------
 document.addEventListener('click',event=>{
@@ -334,7 +335,7 @@ document.addEventListener('click',event=>{
   if(d.status) { state.status=d.status; document.querySelectorAll('[data-status]').forEach(b=>b.classList.toggle('selected',b===target)); render(); }
   if(target.classList.contains('remove')) { target.closest('.word-row,.sentence-row').remove(); state.dirty=true; renumber(); }
 });
-$('primary-action').onclick=()=>VIEWS[state.view][2]==='language'?openLanguage():openEditor();
+$('primary-action').onclick=()=>views()[state.view][2]==='language'?openLanguage():openEditor();
 $('search').oninput=e=>{ state.search=e.target.value; render(); };
 $('language-filter').onchange=e=>{ state.language=e.target.value; render(); };
 $('retry').onclick=refresh;
@@ -353,5 +354,11 @@ async function start(user) { showWorkspace(user); navigate(state.view); await re
 (async()=>{
   if(location.pathname.replace(/\/$/,'')==='/signup') { showLogin(); return; }
   try { const {user}=await api('/api/auth/me'); await start(user); }
-  catch(error) { showLogin(); if(error.message!=='Sign in to continue.') $('login-error').textContent=error.message; }
+  catch(error) { showLogin(); if(t(error.message)!==t("Sign in to continue.")) $('login-error').textContent=t(error.message); }
 })();
+
+document.addEventListener('studio-language-change',()=>{
+  navigate(state.view);
+  if(state.editing || $('editor').open) editorChrome(state.editing,readEditor());
+  $('language-heading').textContent=state.editingLanguage?t('Edit {name}',{name:state.editingLanguage['name_'+StudioI18n.locale]}):t('Add a language');
+});
