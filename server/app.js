@@ -118,13 +118,17 @@ export function createApp(store, {origin, production = false, google = null, lea
           if (path !== '/api/admin/audio' && !(req.headers['content-type'] || '').startsWith('application/json')) throw fail(415, 'Use application/json.');
         }
         if (path.startsWith('/api/learn/')) {
-          if (path === '/api/learn/auth-options' && method === 'GET') return json(200, {google:!!google, googleOrigin:google?.origin || null});
+          if (path === '/api/learn/auth-options' && method === 'GET') return json(200, {google:!!google, googleOrigin:google?.origin || null, app:!!google, appProtocol:google ? 2 : null});
           if (path === '/api/learn/google/start' && method === 'GET') {
             if (!google) throw fail(404, 'Google sign-in is not configured.');
-            const link = new URL(req.url, origin).searchParams.get('link') === '1';
+            const query = new URL(req.url, origin).searchParams;
+            const link = query.get('link') === '1';
+            const appChallenge = query.get('app') === '1' ? query.get('challenge') || '' : null;
+            const appState = appChallenge !== null ? query.get('app_state') || '' : null;
+            if (appChallenge !== null && (link || !/^[A-Za-z0-9_-]{43}$/.test(appChallenge) || !/^[A-Za-z0-9_-]{43}$/.test(appState))) throw fail(400, 'Invalid app sign-in request.');
             // Always use the registered host, including a host-only state cookie.
             if (req.headers.host !== new URL(google.origin).host) {
-              res.writeHead(302, {Location:google.origin + '/api/learn/google/start'}); return res.end();
+              res.writeHead(302, {Location:google.origin + '/api/learn/google/start' + (appChallenge ? `?app=1&challenge=${appChallenge}&app_state=${appState}` : link ? '?link=1' : '')}); return res.end();
             }
             if (!(await store.loginAllowed(hashToken(`google:${clientAddress(req)}`)))) throw fail(429, 'Too many sign-in attempts. Try again in 15 minutes.');
             let sessionHash = null;
@@ -134,7 +138,7 @@ export function createApp(store, {origin, production = false, google = null, lea
             }
             const state = randomBytes(32).toString('base64url'), binding = randomBytes(32).toString('base64url');
             const verifier = randomBytes(32).toString('base64url'), nonce = randomBytes(32).toString('base64url');
-            await store.saveGoogleAttempt({stateHash:hashToken(state), bindingHash:hashToken(binding), verifier, nonce, sessionHash});
+            await store.saveGoogleAttempt({stateHash:hashToken(state), bindingHash:hashToken(binding), verifier, nonce, sessionHash, appChallenge, appState});
             res.setHeader('Set-Cookie', googleCookie(binding, 600));
             res.writeHead(302, {Location:google.authorizationUrl({state, nonce, challenge:createHash('sha256').update(verifier).digest('base64url')})}); return res.end();
           }
@@ -142,12 +146,15 @@ export function createApp(store, {origin, production = false, google = null, lea
             if (!google) throw fail(404, 'Google sign-in is not configured.');
             res.setHeader('Referrer-Policy', 'no-referrer');
             res.setHeader('Set-Cookie', googleCookie('', 0));
+            let appReturn = null;
             try {
               const params = new URL(req.url, origin).searchParams;
               const state = params.get('state'), binding = readCookie(req, googleCookieName);
               if (req.headers.host !== new URL(google.origin).host || !state || state.length > 128 || !binding) throw new Error('Invalid state');
               const attempt = await store.consumeGoogleAttempt(hashToken(state), hashToken(binding));
               if (!attempt) throw new Error('Expired or reused state');
+              // The app destination and proof are bound to this exact OAuth attempt, not a separate cookie.
+              if (attempt.app_challenge && attempt.app_state) appReturn = {challenge:attempt.app_challenge, state:attempt.app_state};
               if (params.has('error')) throw fail(400, 'google_cancelled');
               const code = params.get('code');
               if (!code || code.length > 4096) throw new Error('Missing code');
@@ -161,12 +168,34 @@ export function createApp(store, {origin, production = false, google = null, lea
               }
               const identity = await google.exchange(code, attempt.verifier, attempt.nonce);
               const account = await store.googleLearner(identity, linkId);
+              if (appReturn) {
+                const handoff = randomBytes(32).toString('base64url');
+                await store.saveAppHandoff(hashToken(handoff), account.id, appReturn.challenge);
+                res.writeHead(302, {Location:`loba://auth?code=${handoff}&state=${appReturn.state}`}); return res.end();
+              }
               await startLearnerSession(res, account.id, true);
               res.writeHead(302, {Location:google.origin + '/learn/auth-complete'}); return res.end();
             } catch (error) {
               const reason = ['google_cancelled','google_existing','google_link'].includes(error.message) ? error.message : 'google_failed';
+              if (appReturn) { res.writeHead(302, {Location:`loba://auth?error=${reason}&state=${appReturn.state}`}); return res.end(); }
               res.writeHead(302, {Location:google.origin + '/learn/account?mode=login&authError=' + reason}); return res.end();
             }
+          }
+          if (path === '/api/learn/google/redeem' && method === 'POST') {
+            if (!google) throw fail(404, 'Google sign-in is not configured.');
+            if (!(await store.loginAllowed(hashToken(`google-redeem:${clientAddress(req)}`)))) throw fail(429, 'Too many sign-in attempts. Try again in 15 minutes.');
+            const input = await body(req);
+            const code = typeof input?.code === 'string' ? input.code : '';
+            const verifier = typeof input?.verifier === 'string' ? input.verifier : '';
+            if (!/^[A-Za-z0-9_-]{43}$/.test(code) || !/^[A-Za-z0-9._~-]{43,128}$/.test(verifier)) throw fail(401, 'Google sign-in failed or expired. Please try again.');
+            const challenge = createHash('sha256').update(verifier).digest('base64url');
+            // Atomic consumption with the proof: replay fails, and a wrong proof cannot spend a valid code.
+            const handoff = await store.consumeAppHandoff(hashToken(code), challenge);
+            if (!handoff) throw fail(401, 'Google sign-in failed or expired. Please try again.');
+            const account = await store.learnerById(handoff.learner_id);
+            if (!account) throw fail(401, 'Google sign-in failed or expired. Please try again.');
+            await startLearnerSession(res, account.id, true);
+            return json(200, {learner:publicLearner(account), progress:await store.progress(account.id)});
           }
           if (path === '/api/learn/signup' && method === 'POST') {
             const input = await body(req, PROGRESS_MAX_BYTES);

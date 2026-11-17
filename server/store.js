@@ -126,12 +126,19 @@ export class Store {
     } catch (error) { await db.query('ROLLBACK'); throw error; }
     finally { db.release(); }
   }
-  async saveGoogleAttempt({stateHash, bindingHash, verifier, nonce, sessionHash}) {
+  async saveGoogleAttempt({stateHash, bindingHash, verifier, nonce, sessionHash, appChallenge = null, appState = null}) {
     await this.pool.query('DELETE FROM learner_oauth_attempts WHERE expires_at < now()');
-    await this.pool.query('INSERT INTO learner_oauth_attempts(state_hash,binding_hash,verifier,nonce,session_hash) VALUES($1,$2,$3,$4,$5)', [stateHash,bindingHash,verifier,nonce,sessionHash]);
+    await this.pool.query('INSERT INTO learner_oauth_attempts(state_hash,binding_hash,verifier,nonce,session_hash,app_challenge,app_state) VALUES($1,$2,$3,$4,$5,$6,$7)', [stateHash,bindingHash,verifier,nonce,sessionHash,appChallenge,appState]);
   }
   async consumeGoogleAttempt(stateHash, bindingHash) {
     return (await this.pool.query('DELETE FROM learner_oauth_attempts WHERE state_hash=$1 AND binding_hash=$2 AND expires_at>now() RETURNING *', [stateHash,bindingHash])).rows[0];
+  }
+  async saveAppHandoff(codeHash, learnerId, challenge) {
+    await this.pool.query('DELETE FROM learner_app_handoffs WHERE expires_at < now()');
+    await this.pool.query('INSERT INTO learner_app_handoffs(code_hash,learner_id,challenge) VALUES($1,$2,$3)', [codeHash,learnerId,challenge]);
+  }
+  async consumeAppHandoff(codeHash, challenge) {
+    return (await this.pool.query('DELETE FROM learner_app_handoffs WHERE code_hash=$1 AND challenge=$2 AND expires_at>now() RETURNING learner_id', [codeHash,challenge])).rows[0];
   }
   async googleLearner({sub, email, name}, linkId = null) {
     const db = await this.pool.connect();

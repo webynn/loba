@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
 import { createApp } from '../server/app.js';
 import { createGoogleAuth, googleIdentity } from '../server/google.js';
+import { createHash } from 'node:crypto';
 import { hashToken } from '../server/security.js';
 const origin = 'https://congolingo.com';
 async function invoke(app, url, cookie = '', method = 'GET', data) {
@@ -17,7 +18,7 @@ function fixture() {
   const store={
     loginAllowed:async()=>true,
     saveGoogleAttempt:async a=>attempts.set(a.stateHash,a),
-    consumeGoogleAttempt:async(s,b)=>{const a=attempts.get(s);if(!a||a.bindingHash!==b)return;attempts.delete(s);return{...a,session_hash:a.sessionHash}},
+    consumeGoogleAttempt:async(s,b)=>{const a=attempts.get(s);if(!a||a.bindingHash!==b)return;attempts.delete(s);return{...a,session_hash:a.sessionHash,app_challenge:a.appChallenge,app_state:a.appState}},
     googleLearner:async(identity,id)=>{args={identity,id};return{id:'learner',name:'Nadia',email:identity.email,google_sub:identity.sub}},
     createLearnerSession:async(hash,id,google)=>sessions.set(hash,{id,google}),
     learnerSession:async hash=>sessions.get(hash),
@@ -81,4 +82,63 @@ test('Google-only deletion requires explicit confirmation and a recent Google se
   assert.equal((await invoke(f.app,url,cookie,'DELETE',{confirm:true})).status,401);assert.equal(deleted,false);
   f.sessions.get(hashToken('recent')).google_auth_at=new Date();
   assert.equal((await invoke(f.app,url,cookie,'DELETE',{confirm:true})).status,200);assert.equal(deleted,true);
+});
+
+function nativeFixture() {
+  const f=fixture(), handoffs=new Map();
+  Object.assign(f.store,{
+    saveAppHandoff:async(hash,id,challenge)=>handoffs.set(hash,{learner_id:id,challenge,expires:Date.now()+120000}),
+    consumeAppHandoff:async(hash,challenge)=>{const h=handoffs.get(hash);if(!h||h.challenge!==challenge||h.expires<=Date.now())return;handoffs.delete(hash);return h},
+    learnerById:async id=>({id,name:'Nadia',email:'nadia@example.com',google_sub:'google-id',password_hash:null}),
+    progress:async()=>({state:{xp:30}}),
+  });
+  // Preserve getters on the fixture.
+  f.handoffs=handoffs;return f;
+}
+const proof='v'.repeat(43), appState='s'.repeat(43);
+const nativeStart='/api/learn/google/start?app=1&challenge='+createHash('sha256').update(proof).digest('base64url')+'&app_state='+appState;
+async function issueHandoff(f, suffix='&code=test') {
+  const start=await invoke(f.app,nativeStart);
+  return invoke(f.app,'/api/learn/google/callback?state='+f.authorization.state+suffix,start.headers['set-cookie'].split(';')[0]);
+}
+test('native handoff is proof-bound, single-use and returns progress only to the app',async()=>{
+  const f=nativeFixture();assert.equal((await invoke(f.app,'/api/learn/auth-options')).body.app,true);
+  const done=await issueHandoff(f), url=new URL(done.headers.location);
+  assert.equal(url.protocol,'loba:');assert.equal(url.hostname,'auth');assert.equal(url.searchParams.get('state'),appState);
+  assert.equal(f.sessions.size,0);assert.ok(!done.headers['set-cookie'].includes('loba_learner'));
+  const code=url.searchParams.get('code');assert.match(code,/^[A-Za-z0-9_-]{43}$/);
+  const redeem=(verifier)=>invoke(f.app,'/api/learn/google/redeem','','POST',{code,verifier});
+  assert.equal((await redeem('w'.repeat(43))).status,401);assert.equal(f.handoffs.size,1);
+  const ok=await redeem(proof);assert.equal(ok.status,200);assert.equal(ok.body.learner.googleLinked,true);assert.equal(ok.body.progress.state.xp,30);
+  assert.match(ok.headers['set-cookie'][1],/^__Host-loba_learner=/);assert.equal(f.sessions.size,1);
+  assert.equal((await redeem(proof)).status,401);
+});
+test('native requests reject malformed proofs, missing state and account linking',async()=>{
+  const f=nativeFixture();
+  for(const path of [nativeStart+'&link=1',nativeStart.replace(appState,'short'),nativeStart.replace('&app_state='+appState,''),nativeStart.replace('challenge=','challenge=x')]) assert.equal((await invoke(f.app,path)).status,400);
+  for(const data of [{}, {code:'x'.repeat(43),verifier:'short'}, {code:'x'.repeat(500),verifier:proof}]) assert.equal((await invoke(f.app,'/api/learn/google/redeem','','POST',data)).status,401);
+});
+test('native denial and existing-account errors return the original app state',async()=>{
+  for(const reason of ['google_cancelled','google_existing','google_failed']) {
+    const f=nativeFixture();f.google.exchange=async()=>{throw new Error(reason==='google_failed'?'private-provider-detail':reason)};
+    const done=await issueHandoff(f,reason==='google_cancelled'?'&error=access_denied':'&code=test');
+    const url=new URL(done.headers.location);assert.equal(url.searchParams.get('state'),appState);assert.equal(url.searchParams.get('error'),reason);
+    assert.equal(f.handoffs.size,0);assert.equal(f.sessions.size,0);
+  }
+});
+test('native handoffs expire and concurrent redemption grants only one session',async()=>{
+  const f=nativeFixture();let done=await issueHandoff(f);let code=new URL(done.headers.location).searchParams.get('code');
+  f.handoffs.get(hashToken(code)).expires=Date.now()-1;
+  assert.equal((await invoke(f.app,'/api/learn/google/redeem','','POST',{code,verifier:proof})).status,401);
+  done=await issueHandoff(f);code=new URL(done.headers.location).searchParams.get('code');
+  const results=await Promise.all([1,2].map(()=>invoke(f.app,'/api/learn/google/redeem','','POST',{code,verifier:proof})));
+  assert.deepEqual(results.map(x=>x.status).sort(),[200,401]);assert.equal(f.sessions.size,1);
+});
+test('native handoff respects disabled provider and rate limits',async()=>{
+  const f=nativeFixture();const disabled=createApp(f.store,{origin,production:true});
+  assert.equal((await invoke(disabled,'/api/learn/auth-options')).body.app,false);
+  assert.equal((await invoke(disabled,'/api/learn/google/redeem','','POST',{code:'x'.repeat(43),verifier:proof})).status,404);
+  f.store.loginAllowed=async()=>false;
+  assert.equal((await invoke(f.app,nativeStart)).status,429);
+  assert.equal((await invoke(f.app,'/api/learn/google/redeem','','POST',{code:'x'.repeat(43),verifier:proof})).status,429);
 });
