@@ -44,6 +44,12 @@ export class Store {
     } catch (error) { await db.query('ROLLBACK'); throw error; }
     finally { db.release(); }
   }
+  async joinTesters(name, email, platform) {
+    await this.pool.query('INSERT INTO beta_testers(id,name,email,platform) VALUES($1,$2,$3,$4) ON CONFLICT(email,platform) DO NOTHING', [randomUUID(),name,email,platform]);
+  }
+  async testers() {
+    return (await this.pool.query('SELECT name,email,platform,created_at FROM beta_testers ORDER BY created_at DESC')).rows;
+  }
   async healthy() { await this.pool.query('SELECT 1'); }
   async loginAllowed(key) {
     const {rows} = await this.pool.query(`INSERT INTO studio_login_attempts(key,attempts,resets_at) VALUES($1,1,now()+interval '15 minutes')

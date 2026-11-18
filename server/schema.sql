@@ -104,3 +104,12 @@ CREATE TABLE IF NOT EXISTS learner_app_handoffs (
   expires_at TIMESTAMPTZ NOT NULL DEFAULT now() + interval '2 minutes'
 );
 CREATE INDEX IF NOT EXISTS learner_app_handoffs_expiry ON learner_app_handoffs(expires_at);
+
+CREATE TABLE IF NOT EXISTS beta_testers (
+ id uuid PRIMARY KEY,
+ name text NOT NULL,
+ email text NOT NULL,
+ platform text NOT NULL CHECK (platform IN ('ios','android')),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(email,platform)
+);

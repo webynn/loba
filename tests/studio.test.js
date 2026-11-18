@@ -309,3 +309,21 @@ test('editors see every learner and a safe summary of their progress',async()=>{
   assert.equal(nadia.password_hash,undefined);
   assert.equal(joel.language,null);assert.equal(joel.xp,0);assert.equal(joel.streak,0,'An old streak no longer counts');
 });
+
+test('tester signups validate consent and platform and keep the roster private', async () => {
+  const {store, app, headers} = authenticated();
+  const rows = [];
+  store.joinTesters = async (name,email,platform) => { rows.push({name,email,platform}); };
+  store.testers = async () => rows;
+  const request = {url:'/api/testers',method:'POST',headers:{origin},data:{name:' Tester ',email:' TEST@example.com ',platform:'ios',consent:true}};
+  assert.equal((await invoke(app,request)).status,200);
+  assert.deepEqual(rows,[{name:'Tester',email:'test@example.com',platform:'ios'}]);
+  for (const override of [{consent:false},{platform:'other'},{email:'bad'},{name:''}]) {
+    assert.equal((await invoke(app,{...request,data:{...request.data,...override}})).status,400);
+  }
+  assert.equal((await invoke(app,{...request,headers:{origin:'https://other.example'}})).status,403);
+  assert.equal((await invoke(app,{url:'/api/admin/testers'})).status,401);
+  assert.deepEqual((await invoke(app,{url:'/api/admin/testers',headers})).data.testers,rows);
+  store.allowed=false;
+  assert.equal((await invoke(app,request)).status,429);
+});

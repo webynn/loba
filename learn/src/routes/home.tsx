@@ -228,6 +228,7 @@ function Home() {
           </div>
           <nav className="lp-foot-links" aria-label="Loba">
             {languages.map((l) => <button key={l.code} onClick={() => playWith(l.code)}>{langName(l.code)}</button>)}
+            <a href="/testers">{ui === 'fr' ? 'Tester l’application' : 'Become a tester'}</a>
             <a href="/privacy.html">{t('privacy')}</a>
           </nav>
           <UiSwitch />

@@ -76,11 +76,12 @@ const views = () => ({
 });
 function navigate(view) {
   state.view=view;
+  if(view==='testers') loadTesters();
   if(view==='accounts') refreshAccounts();
   if(view==='learners') loadLearners();
   for(const section of document.querySelectorAll('.view')) section.hidden=section.id!==view+'-view';
   document.querySelectorAll('.nav-item').forEach(b=>{ const on=b.dataset.view===view; b.classList.toggle('active',on); if(on)b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
-  const [title,subtitle,action]=views()[view];
+  const [title,subtitle,action]=view==='testers'?['Testeurs · Testers','iOS / Android',null]:views()[view];
   $('page-title').textContent=title; $('page-subtitle').textContent=subtitle; document.title=`${title} · Loba Studio`;
   $('primary-action').hidden=!action; $('primary-label').textContent=action==='language'?t("Add language"):t("New lesson");
   render(); window.scrollTo({top:0});
@@ -564,3 +565,12 @@ $('grid-solution').onclick=event=>{
 };
 $('puzzle-simulator').ontoggle=()=>{ if ($('puzzle-simulator').open) renderDraftGrid(); };
 $('lesson-form').elements.position.addEventListener('input',puzzleStatus);
+
+
+async function loadTesters() {
+  $('testers-list').textContent = 'Loading…';
+  try {
+    const {testers} = await api('/api/admin/testers');
+    $('testers-list').innerHTML = testers.length ? '<table class="table"><thead><tr><th>Name</th><th>Store email</th><th>Platform</th><th>Joined</th></tr></thead><tbody>' + testers.map(row => '<tr><td>' + esc(row.name) + '</td><td>' + esc(row.email) + '</td><td>' + esc(row.platform === 'ios' ? 'iOS · TestFlight' : 'Android · Google Play') + '</td><td>' + date(row.created_at) + '</td></tr>').join('') + '</tbody></table>' : '<p class="empty">No signups yet / Aucune inscription.</p>';
+  } catch (error) { $('testers-list').textContent = error.message; }
+}

@@ -102,6 +102,16 @@ export function createApp(store, {origin, production = false, google = null, lea
     try {
       const path = new URL(req.url, origin).pathname;
       const method = req.method;
+      if (method === 'POST' && path === '/api/testers') {
+        if (!allowedOrigins.has(req.headers.origin)) throw fail(403, 'Request origin is not allowed.');
+        if (!(await store.loginAllowed(hashToken('testers:' + clientAddress(req))))) throw fail(429, 'Please try again later.');
+        const input = await body(req, 4096);
+        const name = typeof input?.name === 'string' ? input.name.trim() : '';
+        const email = typeof input?.email === 'string' ? input.email.trim().toLowerCase() : '';
+        if (!name || name.length > 80 || /[<>\x00-\x1f]/.test(name) || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !['ios','android'].includes(input?.platform) || input?.consent !== true) throw fail(400, 'Please enter your name, a valid email, your platform and consent.');
+        await store.joinTesters(name, email, input.platform);
+        return json(200, {ok:true});
+      }
       if (method === 'GET' && path === '/health') { await store.healthy(); return json(200, {status:'ok'}); }
       // Native clients need no cookies to read published content. Drafts are never returned here.
       // The map game's content: one file shared by the website, this API and the iOS app.
@@ -291,6 +301,7 @@ export function createApp(store, {origin, production = false, google = null, lea
         if (!user) throw fail(401, 'Sign in to continue.');
         if (path === '/api/auth/me' && method === 'GET') return json(200,{user});
         if (path === '/api/auth/logout' && method === 'POST') { await store.logout(tokenHash); res.setHeader('Set-Cookie',cookie('',0)); return json(200,{ok:true}); }
+        if (path === '/api/admin/testers' && method === 'GET') return json(200, {testers:await store.testers()});
         if (path === '/api/admin/learners' && method === 'GET') return json(200,{learners:(await store.learnerList()).map(learnerSummary)});
         if (path === '/api/admin/accounts' && method === 'GET') return json(200,{accounts:await store.pendingAccounts()});
         const approval=path.match(/^\/api\/admin\/accounts\/([0-9a-f-]{36})\/approve$/i);
@@ -332,7 +343,7 @@ export function createApp(store, {origin, production = false, google = null, lea
         res.writeHead(302, {Location: studioHost ? '/studio' : '/learn/'}); return res.end();
       }
       if (path === '/learn' || path.startsWith('/learn/')) return await serveLearn(res, path, method, learnDir);
-      const files = {'/studio':'../admin/index.html','/studio/':'../admin/index.html','/admin':'../admin/index.html','/admin/':'../admin/index.html','/admin/i18n.js':'../admin/i18n.js','/admin/app.js':'../admin/app.js','/admin/style.css':'../admin/style.css','/privacy.html':'../privacy.html','/manifest.webmanifest':'../manifest.webmanifest','/icons/icon-192.png':'../icons/icon-192.png','/icons/icon-512.png':'../icons/icon-512.png','/icons/apple-touch-icon.png':'../icons/apple-touch-icon.png'};
+      const files = {'/testers':'../testers/index.html','/testers/':'../testers/index.html','/testers/app.js':'../testers/app.js','/testers/style.css':'../testers/style.css','/studio':'../admin/index.html','/studio/':'../admin/index.html','/admin':'../admin/index.html','/admin/':'../admin/index.html','/admin/i18n.js':'../admin/i18n.js','/admin/app.js':'../admin/app.js','/admin/style.css':'../admin/style.css','/privacy.html':'../privacy.html','/manifest.webmanifest':'../manifest.webmanifest','/icons/icon-192.png':'../icons/icon-192.png','/icons/icon-512.png':'../icons/icon-512.png','/icons/apple-touch-icon.png':'../icons/apple-touch-icon.png'};
       const file = path === '/signup' || path === '/signup/' ? '../admin/index.html' : files[path]; if (!file) throw fail(404,'Page not found.');
       res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
       const ext = file.split('.').at(-1);
