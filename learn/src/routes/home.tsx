@@ -230,6 +230,7 @@ function Home() {
             {languages.map((l) => <button key={l.code} onClick={() => playWith(l.code)}>{langName(l.code)}</button>)}
             <a href="/creators">{ui === 'fr' ? 'Créer des leçons' : 'Teach with Loba'}</a>
             <a href="/testers">{ui === 'fr' ? 'Tester l’application' : 'Become a tester'}</a>
+            <a href="/feedback">{ui === 'fr' ? 'Donner mon avis' : 'Feedback'}</a>
             <a href="/privacy.html">{t('privacy')}</a>
           </nav>
           <UiSwitch />
