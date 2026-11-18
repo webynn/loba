@@ -397,9 +397,10 @@ input.narrow { max-width: 140px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 /* Always available on sign-in and workspace screens, including phones. */
-.studio-language { display:flex; justify-content:flex-end; gap:4px; padding:8px 16px; background:var(--surface); position:relative; z-index:21; }
-.studio-language button { min-height:44px; padding:8px 12px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); }
-.studio-language button[aria-pressed="true"] { background:var(--brand-tint); color:var(--brand); border-color:var(--brand); font-weight:700; }
+.studio-language { display:flex; justify-content:center; gap:8px; padding:12px 16px 20px; color:var(--muted); }
+.studio-language button { min-height:44px; padding:8px; border:0; border-radius:6px; background:transparent; color:var(--muted); font-size:12px; cursor:pointer; }
+.studio-language button[aria-pressed="true"] { color:var(--ink); font-weight:600; }
+.studio-language button:hover { color:var(--brand); }
 .auth { min-height:calc(100vh - 60px); }
 .side { top:60px; }
 @media(max-width:760px) { .side { top:0; } }
