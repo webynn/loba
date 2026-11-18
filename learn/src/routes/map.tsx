@@ -7,10 +7,9 @@ import { Loba } from '../components/Loba'
 import { UiSwitch } from '../components/UiSwitch'
 import { actions } from '../game/store'
 import { useT } from '../i18n/useT'
-import { COUNTRY, CULTURE, HISTORY, PROVINCES, REGIONS, type Province, type Region } from '../map/data'
+import { COUNTRY, CULTURE, HISTORY, MAP_VIEW, PROVINCES, REGIONS, SHAPES, type Province, type Region } from '../map/data'
 import { SATELLITE } from '../map/mapbox'
 import { saveMap, useMapProgress } from '../map/progress'
-import { MAP_VIEW, SHAPES } from '../map/shapes'
 import '../styles/map.css'
 
 /** Mboka na biso ("our country"): the map of the DRC as a puzzle, a quiz, an atlas and a little book. */
@@ -21,7 +20,8 @@ const UI = {
     title: 'Mboka na biso', sub: 'La carte du Congo', close: 'Fermer', back: 'Retour',
     intro: 'Remets chaque province à sa place et découvre notre pays.',
     stamps: 'provinces découvertes', regions: 'Les régions', play: 'Jouer', again: 'Rejouer',
-    all: 'Le grand défi', allText: 'Les 26 provinces, sans les contours.', allLocked: 'Termine les 6 régions pour l’ouvrir.',
+    all: 'Le grand défi', allText: 'Les 26 provinces, sans les contours.', allLocked: 'Termine le mode difficile ou les 6 régions pour l’ouvrir.',
+    hard: 'Mode difficile', hardText: 'Tout le pays d’un coup : pas de régions, pas d’indices.', hardNote: 'À toi de trouver sa place.',
     more: 'Encore plus', quiz: 'Quiz éclair', quizText: 'Où est-ce ? Quel est le chef-lieu ?', atlas: 'Atlas', atlasText: 'Touche une province pour tout savoir.',
     book: 'Histoire et cultures', bookText: 'Des royaumes à la rumba.',
     drag: 'Glisse', dragTo: 'sur la carte', orTap: 'ou touche sa place', skip: 'Plus tard', hint: 'Indice',
@@ -36,7 +36,8 @@ const UI = {
     title: 'Mboka na biso', sub: 'The map of Congo', close: 'Close', back: 'Back',
     intro: 'Put every province back in its place and discover our country.',
     stamps: 'provinces discovered', regions: 'The regions', play: 'Play', again: 'Play again',
-    all: 'The big challenge', allText: 'All 26 provinces, without the outlines.', allLocked: 'Finish the 6 regions to open it.',
+    all: 'The big challenge', allText: 'All 26 provinces, without the outlines.', allLocked: 'Finish hard mode or the 6 regions to open it.',
+    hard: 'Hard mode', hardText: 'The whole country at once: no regions, no hints.', hardNote: 'Work out where it goes.',
     more: 'Even more', quiz: 'Quick quiz', quizText: 'Where is it? What is its capital?', atlas: 'Atlas', atlasText: 'Tap a province to learn all about it.',
     book: 'History and cultures', bookText: 'From kingdoms to rumba.',
     drag: 'Drag', dragTo: 'onto the map', orTap: 'or tap its place', skip: 'Later', hint: 'Hint',
@@ -218,7 +219,7 @@ function Fact({ p, s, ui, full }: { p: Province; s: Strings; ui: Lang; full?: bo
 function Hub({ s, ui, go }: { s: Strings; ui: Lang; go: (to: Screen) => void }) {
   const progress = useMapProgress()
   const regionsDone = REGIONS.filter((r) => progress.stars[r.id]).length
-  const allOpen = regionsDone === REGIONS.length
+  const allOpen = regionsDone === REGIONS.length || Boolean(progress.stars.hard)
   const next = REGIONS.find((r) => !progress.stars[r.id])
   return (
     <main className="mk-hub">
@@ -252,6 +253,14 @@ function Hub({ s, ui, go }: { s: Strings; ui: Lang; go: (to: Screen) => void }) 
             </span>
           </button>
         ))}
+        <button className="mk-card" style={{ '--c': 'var(--red)' } as CSSProperties} onClick={() => go({ name: 'puzzle', level: 'hard' })}>
+          <span className="mk-card-art"><span className="mk-big-emoji">🔥</span></span>
+          <span className="mk-card-body">
+            <small>26 provinces</small>
+            <b>{s.hard}</b>
+            {progress.stars.hard ? <Stars n={progress.stars.hard} /> : <em>{s.hardText}</em>}
+          </span>
+        </button>
         <button className="mk-card mk-card-all" disabled={!allOpen} onClick={() => go({ name: 'puzzle', level: 'all' })}>
           <span className="mk-card-art"><span className="mk-big-emoji">{allOpen ? '🏆' : '🔒'}</span></span>
           <span className="mk-card-body">
@@ -303,7 +312,9 @@ function Puzzle({ level, s, ui, go }: { level: string; s: Strings; ui: Lang; go:
   const current = queue[0]
   const totalMisses = Object.values(misses).reduce((a, b) => a + b, 0)
   const stars = totalMisses <= 1 ? 3 : totalMisses <= ids.length ? 2 : 1
-  const hinted = current !== undefined && (misses[current] ?? 0) >= 2
+  const hard = level === 'hard'
+  // Hard mode gives no written hint, and the place only glows after three misses.
+  const hinted = current !== undefined && (misses[current] ?? 0) >= (region ? 2 : 3)
   const finished = placed.length === ids.length && !reveal
 
   useEffect(() => {
@@ -394,14 +405,14 @@ function Puzzle({ level, s, ui, go }: { level: string; s: Strings; ui: Lang; go:
     <main className="mk-play">
       <div className="mk-stage">
         <div className="mk-progress">
-          <span style={{ '--c': region?.color ?? 'var(--sky)' } as CSSProperties}>{region ? say(region.name, ui) : s.all}</span>
+          <span style={{ '--c': region?.color ?? 'var(--red)' } as CSSProperties}>{region ? say(region.name, ui) : hard ? s.hard : s.all}</span>
           <div className="mk-meter"><i style={{ width: `${(placed.length / ids.length) * 100}%` }} /></div>
           <b>{placed.length}/{ids.length}</b>
         </div>
         <DrcMap
           svgRef={svg}
           view={view}
-          outlines={Boolean(region)}
+          outlines={Boolean(region) || hard}
           tone={tone}
           label={(id) => placed.includes(id) && (Boolean(region) || id === reveal)}
           onPick={(id) => current && !reveal && !placed.includes(id) && attempt(current, id)}
@@ -423,7 +434,7 @@ function Puzzle({ level, s, ui, go }: { level: string; s: Strings; ui: Lang; go:
               <small>{s.drag}</small>
               <h2>{p.name}</h2>
               <small>{s.dragTo} · {s.orTap}</small>
-              <p className="mk-hint-text" data-note={note ? true : undefined}>{note ?? say(p.hint, ui)}</p>
+              <p className="mk-hint-text" data-note={note ? true : undefined}>{note ?? (region ? say(p.hint, ui) : s.hardNote)}</p>
               {queue.length > 1 && <button className="mk-skip" onClick={() => { sfx('tap'); setNote(null); setQueue((q) => [...q.slice(1), q[0]!]) }}>{s.skip} ›</button>}
             </div>
           </div>
@@ -585,7 +596,7 @@ function Book({ s, ui }: { s: Strings; ui: Lang }) {
       {tab === 'country' && (
         <div className="mk-cards mk-figures">
           {COUNTRY.map((c) => (
-            <article key={c.label.fr}><span className="mk-emoji">{c.emoji}</span><h3>{say(c.label, ui)}</h3><p>{say(c.value, ui)}</p></article>
+            <article key={c.title.fr}><span className="mk-emoji">{c.emoji}</span><h3>{say(c.title, ui)}</h3><p>{say(c.text, ui)}</p></article>
           ))}
         </div>
       )}

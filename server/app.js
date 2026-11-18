@@ -104,6 +104,12 @@ export function createApp(store, {origin, production = false, google = null, lea
       const method = req.method;
       if (method === 'GET' && path === '/health') { await store.healthy(); return json(200, {status:'ok'}); }
       // Native clients need no cookies to read published content. Drafts are never returned here.
+      // The map game's content: one file shared by the website, this API and the iOS app.
+      if (method === 'GET' && path === '/api/v1/map') {
+        const data = await readFile(new URL('../data/drc-map.json', import.meta.url));
+        res.writeHead(200, {'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=300'});
+        return res.end(data);
+      }
       if (method === 'GET' && path === '/api/v1/lessons') return json(200, {schemaVersion:1, languages:await store.publishedLanguages(), lessons:await store.published()});
       // Teacher recordings are public once referenced by a lesson; ids are unguessable.
       const recording = path.match(/^\/api\/v1\/audio\/([0-9a-f-]{36})$/);

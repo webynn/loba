@@ -79,6 +79,15 @@ test('password hashing is salted and rejects incorrect credentials',async()=>{
   const password='a-unique-long-test-password';const first=await hashPassword(password),second=await hashPassword(password);
   assert.notEqual(first,second);assert.ok(await verifyPassword(password,first));assert.equal(await verifyPassword('wrong',first),false);assert.equal(await verifyPassword(password,undefined),false);
 });
+test('the map game content is public and complete',async()=>{
+  const app=createApp(fakeStore(),{origin});
+  const map=await invoke(app,{url:'/api/v1/map'});
+  assert.equal(map.status,200);assert.equal(map.data.schemaVersion,1);assert.equal(map.data.provinces.length,26);
+  const ids=map.data.regions.flatMap(r=>r.provinces);
+  assert.deepEqual([...ids].sort(),map.data.provinces.map(p=>p.id).sort());
+  for(const p of map.data.provinces){assert.ok(p.name&&p.capital&&p.fact.fr&&p.fact.en&&p.hint.fr&&p.d.startsWith('M')&&p.c.length===2&&p.box.length===4)}
+  assert.ok(map.data.history.length>=10&&map.data.culture.length>=10);
+});
 test('all 24 imported units validate, retain their original identity and have vocabulary',async()=>{
   const data=JSON.parse(await readFile(new URL('../data/lessons.json',import.meta.url)));
   assert.equal(data.length,24);assert.equal(new Set(data.map(l=>l.id)).size,24);

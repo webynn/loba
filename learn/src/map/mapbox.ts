@@ -1,4 +1,4 @@
-import { MAP_VIEW } from './shapes'
+import { MAP_VIEW } from './data'
 
 /** A public Mapbox token (pk.…), given at build time as VITE_MAPBOX_TOKEN. Without it the map is drawn plain. */
 const TOKEN = (import.meta.env.VITE_MAPBOX_TOKEN as string | undefined)?.trim()
