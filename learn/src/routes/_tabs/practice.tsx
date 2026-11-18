@@ -41,7 +41,7 @@ function PracticePage() {
               <p>{listen ? t('listeningText') : t('listeningUnavailable')}</p>
             </span>
           </Link>
-          <Link to="/puzzle" className="tile-card">
+          <Link to="/practice/puzzle" className="tile-card">
             <span className="icon-tile" style={{ '--tint': 'var(--sky-tint)' } as React.CSSProperties}><Art name="cards" /></span>
             <span className="body"><h3>{ui === 'en' ? 'Word hunt' : 'Mots mêlés'}</h3><p>{ui === 'en' ? 'Find crossing words and discover their meanings.' : 'Trouve les mots croisés dans la grille et découvre leur sens.'}</p></span>
           </Link>

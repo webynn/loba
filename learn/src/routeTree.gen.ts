@@ -24,6 +24,7 @@ import { Route as TabsProfileRouteImport } from './routes/_tabs/profile'
 import { Route as TabsQuestsRouteImport } from './routes/_tabs/quests'
 import { Route as TabsShopRouteImport } from './routes/_tabs/shop'
 import { Route as LessonUnitIdRouteImport } from './routes/lesson.$unitId'
+import { Route as TabsPracticePuzzleRouteImport } from './routes/_tabs/practice_.puzzle'
 
 const TabsRoute = TabsRouteImport.update({
   id: '/_tabs',
@@ -99,6 +100,11 @@ const LessonUnitIdRoute = LessonUnitIdRouteImport.update({
   path: '/lesson/$unitId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TabsPracticePuzzleRoute = TabsPracticePuzzleRouteImport.update({
+  id: '/practice_/puzzle',
+  path: '/practice/puzzle',
+  getParentRoute: () => TabsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof TabsIndexRoute
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/quests': typeof TabsQuestsRoute
   '/shop': typeof TabsShopRoute
   '/lesson/$unitId': typeof LessonUnitIdRoute
+  '/practice/puzzle': typeof TabsPracticePuzzleRoute
 }
 export interface FileRoutesByTo {
   '/account': typeof AccountRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/shop': typeof TabsShopRoute
   '/lesson/$unitId': typeof LessonUnitIdRoute
   '/': typeof TabsIndexRoute
+  '/practice/puzzle': typeof TabsPracticePuzzleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/_tabs/shop': typeof TabsShopRoute
   '/lesson/$unitId': typeof LessonUnitIdRoute
   '/_tabs/': typeof TabsIndexRoute
+  '/_tabs/practice_/puzzle': typeof TabsPracticePuzzleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/quests'
     | '/shop'
     | '/lesson/$unitId'
+    | '/practice/puzzle'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/account'
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/lesson/$unitId'
     | '/'
+    | '/practice/puzzle'
   id:
     | '__root__'
     | '/_tabs'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/_tabs/shop'
     | '/lesson/$unitId'
     | '/_tabs/'
+    | '/_tabs/practice_/puzzle'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -322,6 +334,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LessonUnitIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_tabs/practice_/puzzle': {
+      id: '/_tabs/practice_/puzzle'
+      path: '/practice/puzzle'
+      fullPath: '/practice/puzzle'
+      preLoaderRoute: typeof TabsPracticePuzzleRouteImport
+      parentRoute: typeof TabsRoute
+    }
   }
 }
 
@@ -331,6 +350,7 @@ interface TabsRouteChildren {
   TabsQuestsRoute: typeof TabsQuestsRoute
   TabsShopRoute: typeof TabsShopRoute
   TabsIndexRoute: typeof TabsIndexRoute
+  TabsPracticePuzzleRoute: typeof TabsPracticePuzzleRoute
 }
 
 const TabsRouteChildren: TabsRouteChildren = {
@@ -339,6 +359,7 @@ const TabsRouteChildren: TabsRouteChildren = {
   TabsQuestsRoute: TabsQuestsRoute,
   TabsShopRoute: TabsShopRoute,
   TabsIndexRoute: TabsIndexRoute,
+  TabsPracticePuzzleRoute: TabsPracticePuzzleRoute,
 }
 
 const TabsRouteWithChildren = TabsRoute._addFileChildren(TabsRouteChildren)
