@@ -5,7 +5,8 @@ import { GoogleSignIn } from '../../account/GoogleSignIn'
 import { forgetDevice } from '../../account/sync'
 import { useLanguages } from '../../hooks'
 import { useSelector } from '@tanstack/react-store'
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
+import { musicEnabled, subscribeMusic, toggleMusic } from '../../audio/music'
 import { Art, type ArtName } from '../../components/Art'
 import { Modal } from '../../components/Modal'
 import { Loba } from '../../components/Loba'
@@ -28,6 +29,7 @@ function Toggle({ on, label, onToggle }: { on: boolean; label: string; onToggle:
 }
 
 function ProfilePage() {
+  const music = useSyncExternalStore(subscribeMusic, musicEnabled)
   const { t, ui, langName } = useT()
   const navigate = useNavigate()
   const s = useSelector(game, (s) => s)
@@ -122,6 +124,7 @@ function ProfilePage() {
             </div>
           </div>
           <Toggle on={s.sound} label={t('sound')} onToggle={() => actions.toggle('sound')} />
+          <Toggle on={music} label={ui === 'fr' ? 'Musique de fond' : 'Background music'} onToggle={toggleMusic} />
           <Toggle on={s.voice} label={t('voice')} onToggle={() => actions.toggle('voice')} />
         </div>
 

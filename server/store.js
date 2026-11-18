@@ -40,9 +40,31 @@ export class Store {
       await db.query('DELETE FROM studio_login_attempts WHERE resets_at < now()');
       await db.query('DELETE FROM learner_sessions WHERE expires_at < now()');
       await db.query('DELETE FROM learner_oauth_attempts WHERE expires_at < now()');
+      const musicSeed = await db.query("SELECT name FROM studio_migrations WHERE name='background-music-v1'");
+      if (!musicSeed.rows.length) {
+        const songs = JSON.parse(await readFile(new URL('../data/music/catalog.json', import.meta.url), 'utf8'));
+        for (const [position, song] of songs.entries()) {
+          const data = await readFile(new URL('../data/music/' + song.file, import.meta.url));
+          await db.query('INSERT INTO studio_music(id,title,credit,position,enabled,mime,data) VALUES($1,$2,$3,$4,true,$5,$6) ON CONFLICT(id) DO NOTHING', [song.id,song.title,song.credit,position,'audio/mp4',data]);
+        }
+        await db.query("INSERT INTO studio_migrations(name) VALUES('background-music-v1')");
+      }
       await db.query('COMMIT');
     } catch (error) { await db.query('ROLLBACK'); throw error; }
     finally { db.release(); }
+  }
+  async music(publicOnly = false) {
+    return (await this.pool.query(`SELECT id,title,credit,enabled,position FROM studio_music ${publicOnly ? 'WHERE enabled=true' : ''} ORDER BY position,created_at`)).rows;
+  }
+  async musicAudio(id, preview = false) {
+    return (await this.pool.query('SELECT mime,data FROM studio_music WHERE id=$1 AND (enabled=true OR $2)', [id,preview])).rows[0];
+  }
+  async addMusic({id,title,mime,data}) {
+    await this.pool.query('INSERT INTO studio_music(id,title,mime,data) VALUES($1,$2,$3,$4)', [id,title,mime,data]);
+  }
+  async updateMusic(id,{title,credit,enabled,position}) {
+    const result = await this.pool.query('UPDATE studio_music SET title=$2,credit=$3,enabled=$4,position=$5 WHERE id=$1', [id,title,credit,enabled,position]);
+    if (!result.rowCount) throw fail(404,'Song not found.');
   }
   async joinTesters(name, email, platform) {
     await this.pool.query('INSERT INTO beta_testers(id,name,email,platform) VALUES($1,$2,$3,$4) ON CONFLICT(email,platform) DO NOTHING', [randomUUID(),name,email,platform]);

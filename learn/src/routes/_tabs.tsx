@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { enterMusic } from '../audio/music'
 import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
 import { requireLearner } from '../account/guard'
 import { catalogQuery, languageOrFirst } from '../content/curriculum'
@@ -46,6 +48,7 @@ function NavLinks() {
 }
 
 function TabsLayout() {
+  useEffect(enterMusic, [])
   const { t } = useT()
   return (
     <div className="shell">

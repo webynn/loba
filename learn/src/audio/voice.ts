@@ -1,3 +1,4 @@
+import { musicVoice } from './music'
 import type { Word } from '../content/types'
 import { game } from '../game/store'
 
@@ -13,11 +14,16 @@ export function playWord(w: Word, slow = false) {
   if (!w.audio || !game.get().voice) return
   try {
     current?.pause()
+    musicVoice(true)
     current = new Audio(`/api/v1/audio/${w.audio}`)
     current.preservesPitch = true
     current.playbackRate = slow ? 0.7 : 1
-    void current.play().catch(() => {})
+    const playing = current
+    const done = () => { if (current === playing) musicVoice(false) }
+    current.onended = done
+    current.onerror = done
+    void current.play().catch(done)
   } catch {
-    /* playback is best-effort */
+    musicVoice(false)
   }
 }

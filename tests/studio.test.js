@@ -327,3 +327,31 @@ test('tester signups validate consent and platform and keep the roster private',
   store.allowed=false;
   assert.equal((await invoke(app,request)).status,429);
 });
+
+test('music catalog and streaming hide disabled songs, including byte ranges',async()=>{
+  const {store,app,headers}=authenticated();
+  const id='12345678-1234-1234-1234-123456789abc';
+  let enabled=false;
+  store.music=async publicOnly=>publicOnly&&!enabled?[]:[{id,title:'Amawolé',enabled}];
+  store.musicAudio=async (key,preview)=>key===id&&(preview||enabled)?{mime:'audio/mp4',data:Buffer.from('0123456789')}:null;
+  assert.deepEqual((await invoke(app,{url:'/api/v1/music'})).data.tracks,[]);
+  assert.equal((await invoke(app,{url:'/api/v1/music/'+id})).status,404);
+  assert.equal((await invoke(app,{url:'/api/admin/music/'+id+'/audio'})).status,401);
+  assert.equal((await invoke(app,{url:'/api/admin/music/'+id+'/audio',headers})).status,200);
+  enabled=true;
+  assert.equal((await invoke(app,{url:'/api/v1/music'})).data.tracks.length,1);
+  const stream=await invoke(app,{url:'/api/v1/music/'+id,headers:{range:'bytes=2-5'}});
+  assert.equal(stream.status,206);assert.equal(stream.raw,'2345');assert.equal(stream.headers['cache-control'],'private, no-store');
+});
+test('music edits require a session, valid metadata and same-origin writes',async()=>{
+  const {store,app,headers}=authenticated();
+  let saved;store.updateMusic=async (id,input)=>{saved=input};
+  const url='/api/admin/music/12345678-1234-1234-1234-123456789abc';
+  const data={title:'Amawolé',credit:'Family song',enabled:true,position:2};
+  assert.equal((await invoke(app,{url,method:'PUT',data})).status,403);
+  assert.equal((await invoke(app,{url,method:'PUT',headers:{...headers,origin:'https://evil.example'},data})).status,403);
+  assert.equal((await invoke(app,{url,method:'PUT',headers,data:{...data,enabled:'yes'}})).status,400);
+  assert.equal((await invoke(app,{url,method:'PUT',headers,data:{...data,position:-1}})).status,400);
+  assert.equal((await invoke(app,{url,method:'PUT',headers,data})).status,200);assert.deepEqual(saved,data);
+  assert.equal((await invoke(app,{url:'/api/admin/music/upload',method:'POST',headers:{...headers,'content-type':'audio/mpeg'},raw:'not audio'})).status,415);
+});

@@ -72,10 +72,13 @@ const views = () => ({
   languages:[t("Languages"),t("Every language Loba teaches, and whether learners can see it."),'language'],
   learners:[t('Learners'),t('Everyone who created an account in the learner app, and how far they’ve got.'),null],
   accounts:[t("Team"),t("People who can edit lessons in Studio."),null],
+  music:[t('Music'),t('Childhood songs, ready for a new generation.'),null],
   activity:[t("Activity"),t("What your team has created, edited and published."),null],
 });
 function navigate(view) {
   state.view=view;
+  for(const audio of document.querySelectorAll('#music-list audio')) audio.pause();
+  if(view==='music') loadMusic();
   if(view==='testers') loadTesters();
   if(view==='accounts') refreshAccounts();
   if(view==='learners') loadLearners();
@@ -574,3 +577,45 @@ async function loadTesters() {
     $('testers-list').innerHTML = testers.length ? '<table class="table"><thead><tr><th>Name</th><th>Store email</th><th>Platform</th><th>Joined</th></tr></thead><tbody>' + testers.map(row => '<tr><td>' + esc(row.name) + '</td><td>' + esc(row.email) + '</td><td>' + esc(row.platform === 'ios' ? 'iOS · TestFlight' : 'Android · Google Play') + '</td><td>' + date(row.created_at) + '</td></tr>').join('') + '</tbody></table>' : '<p class="empty">No signups yet / Aucune inscription.</p>';
   } catch (error) { $('testers-list').textContent = error.message; }
 }
+
+// Background music: drafts can be previewed privately before enabling them in the apps.
+let musicRows = [];
+async function loadMusic() {
+  const list = $('music-list');
+  list.textContent = t('Loading…');
+  try {
+    const result = await api('/api/admin/music');
+    musicRows = result.tracks;
+    list.innerHTML = musicRows.map(song => `<form class="music-card" data-song="${esc(song.id)}">
+      <div class="music-card-head"><span aria-hidden="true">♫</span><h2>${esc(song.title)}</h2><span class="badge ${song.enabled?'published':'draft'}">${song.enabled?t('Enabled'):t('Disabled')}</span></div>
+      <audio controls preload="none" src="/api/admin/music/${esc(song.id)}/audio"></audio>
+      <label class="field">${t('Song title')}<input name="title" value="${esc(song.title)}" maxlength="100" required></label>
+      <label class="field">${t('Credit / source')}<input name="credit" value="${esc(song.credit)}" maxlength="500"></label>
+      <div class="music-card-actions"><label class="field">${t('Order')}<input type="number" name="position" min="0" max="999" value="${song.position}" required></label>
+      <label><input type="checkbox" name="enabled" ${song.enabled?'checked':''}> ${t('Play in apps')}</label><button class="btn primary" type="submit">${t('Save')}</button></div>
+      <p class="form-error" role="status"></p></form>`).join('') || `<div class="empty">${t('No songs yet.')}</div>`;
+  } catch (error) { list.textContent = t(error.message); }
+}
+$('music-list').addEventListener('submit',async event=>{
+  event.preventDefault(); const form = event.target.closest('[data-song]'); if(!form)return;
+  const button=form.querySelector('button[type=submit]'), note=form.querySelector('[role=status]');
+  button.disabled=true; note.textContent='';
+  try {
+    await api('/api/admin/music/'+form.dataset.song,{method:'PUT',body:JSON.stringify({title:form.elements.title.value,credit:form.elements.credit.value,position:Number(form.elements.position.value),enabled:form.elements.enabled.checked})});
+    note.textContent=t('Saved'); form.querySelector('h2').textContent=form.elements.title.value;
+    const badge=form.querySelector('.badge');badge.textContent=t(form.elements.enabled.checked?'Enabled':'Disabled');badge.className='badge '+(form.elements.enabled.checked?'published':'draft');
+  } catch(error) { note.textContent=t(error.message); } finally { button.disabled=false; }
+});
+$('music-upload').addEventListener('change',async event=>{
+  const file=event.target.files[0];if(!file)return;
+  const note=$('music-upload-status');
+  if(file.size>15*1024*1024){note.textContent=t('Maximum 15 MB per song.');event.target.value='';return;}
+  event.target.disabled=true;note.textContent=t('Uploading…');
+  try {
+    const response=await fetch('/api/admin/music/upload',{method:'POST',body:file,headers:{'Content-Type':file.type||'application/octet-stream'}});
+    const data=await response.json();if(!response.ok)throw new Error(data.error||'Upload failed.');
+    note.textContent=t('Uploaded as disabled. Set its title and enable it when ready.'); await loadMusic();
+  } catch(error){note.textContent=t(error.message);} finally {event.target.disabled=false;event.target.value='';}
+});
+// Prevent several previews from playing over each other.
+$('music-list').addEventListener('play',event=>{for(const audio of $('music-list').querySelectorAll('audio'))if(audio!==event.target)audio.pause();},true);

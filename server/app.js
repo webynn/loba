@@ -35,12 +35,12 @@ async function serveLearn(res, path, method, learnDir) {
 
 async function bytes(req, max) {
   let size = 0; const chunks = [];
-  for await (const chunk of req) { size += chunk.length; if (size > max) throw fail(413, 'This recording is too large. Keep it under 1.5 MB.'); chunks.push(Buffer.from(chunk)); }
+  for await (const chunk of req) { size += chunk.length; if (size > max) throw fail(413, `File too large. Maximum ${Math.round(max / 1024 / 1024 * 10) / 10} MB.`); chunks.push(Buffer.from(chunk)); }
   return Buffer.concat(chunks);
 }
 // Safari only plays media served with byte-range support.
-function sendAudio(req, res, {mime, data}) {
-  const headers = {'Content-Type': mime, 'Accept-Ranges': 'bytes', 'Cache-Control': 'public, max-age=31536000, immutable'};
+function sendAudio(req, res, {mime, data}, cache = 'public, max-age=31536000, immutable') {
+  const headers = {'Content-Type': mime, 'Accept-Ranges': 'bytes', 'Cache-Control': cache};
   const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
   if (range && (range[1] || range[2])) {
     let start = range[1] ? Number(range[1]) : Math.max(0, data.length - Number(range[2]));
@@ -122,6 +122,13 @@ export function createApp(store, {origin, production = false, google = null, lea
       }
       if (method === 'GET' && path === '/api/v1/lessons') return json(200, {schemaVersion:1, languages:await store.publishedLanguages(), lessons:await store.published()});
       // Teacher recordings are public once referenced by a lesson; ids are unguessable.
+      if (path === '/api/v1/music' && method === 'GET') return json(200,{tracks:await store.music(true)});
+      const musicStream = path.match(/^\/api\/v1\/music\/([0-9a-f-]{36})$/);
+      if (musicStream && ['GET','HEAD'].includes(method)) {
+        const song = await store.musicAudio(musicStream[1]);
+        if (!song) throw fail(404,'Song not found.');
+        return sendAudio(req,res,song,'private, no-store');
+      }
       const recording = path.match(/^\/api\/v1\/audio\/([0-9a-f-]{36})$/);
       if (recording && ['GET','HEAD'].includes(method)) {
         const audio = await store.audio(recording[1]);
@@ -131,7 +138,7 @@ export function createApp(store, {origin, production = false, google = null, lea
       if (path.startsWith('/api/')) {
         if (!['GET','HEAD'].includes(method)) {
           if (!allowedOrigins.has(req.headers.origin)) throw fail(403, 'Request origin is not allowed.');
-          if (path !== '/api/admin/audio' && !(req.headers['content-type'] || '').startsWith('application/json')) throw fail(415, 'Use application/json.');
+          if (path !== '/api/admin/audio' && path !== '/api/admin/music/upload' && !(req.headers['content-type'] || '').startsWith('application/json')) throw fail(415, 'Use application/json.');
         }
         if (path.startsWith('/api/learn/')) {
           if (path === '/api/learn/auth-options' && method === 'GET') return json(200, {google:!!google, googleOrigin:google?.origin || null, app:!!google, appProtocol:google ? 2 : null});
@@ -306,6 +313,26 @@ export function createApp(store, {origin, production = false, google = null, lea
         if (path === '/api/admin/accounts' && method === 'GET') return json(200,{accounts:await store.pendingAccounts()});
         const approval=path.match(/^\/api\/admin\/accounts\/([0-9a-f-]{36})\/approve$/i);
         if (approval && method === 'POST') { await store.approveAccount(approval[1],user.email); return json(200,{ok:true}); }
+        if (path === '/api/admin/music' && method === 'GET') return json(200,{tracks:await store.music()});
+        if (path === '/api/admin/music/upload' && method === 'POST') {
+          const data = await bytes(req,15 * 1024 * 1024), mime = sniffAudio(data);
+          if (!mime) throw fail(415,'Upload an audio file.');
+          const id = randomUUID();
+          await store.addMusic({id,title:'New song',mime,data});
+          return json(201,{id});
+        }
+        const musicEdit = path.match(/^\/api\/admin\/music\/([0-9a-f-]{36})(\/audio)?$/);
+        if (musicEdit && musicEdit[2] && ['GET','HEAD'].includes(method)) {
+          const song = await store.musicAudio(musicEdit[1],true);
+          if (!song) throw fail(404,'Song not found.');
+          return sendAudio(req,res,song,'private, no-store');
+        }
+        if (musicEdit && !musicEdit[2] && method === 'PUT') {
+          const input = await body(req,4096);
+          if (!input || typeof input.title !== 'string' || !input.title.trim() || input.title.length > 100 || typeof input.credit !== 'string' || input.credit.length > 500 || typeof input.enabled !== 'boolean' || !Number.isInteger(input.position) || input.position < 0 || input.position > 999) throw fail(400,'Check the song title, credit, status and order.');
+          await store.updateMusic(musicEdit[1],{...input,title:input.title.trim()});
+          return json(200,{ok:true});
+        }
         if (path === '/api/admin/audio' && method === 'POST') {
           const data = await bytes(req, AUDIO_MAX_BYTES);
           const mime = sniffAudio(data);

@@ -1,6 +1,21 @@
 // Studio UI only: lesson content and input values are never translated.
 const StudioI18n = (() => {
   const messages = {
+  "Music": "Musique",
+  "Childhood songs, ready for a new generation.": "Les chansons d’enfance, pour une nouvelle génération.",
+  "The sounds of home": "Les sons de chez nous",
+  "Songs shuffle quietly on browsing screens. Lessons stay focused on the teacher’s voice. Learners can switch music off.": "Les chansons accompagnent la navigation en douceur et en ordre aléatoire. Les leçons restent centrées sur la voix de l’enseignant. Chacun peut couper la musique.",
+  "Add an audio track": "Ajouter une piste audio",
+  "Maximum 15 MB per song.": "15 Mo maximum par chanson.",
+  "Song title": "Titre de la chanson",
+  "Credit / source": "Crédit / source",
+  "Order": "Ordre",
+  "Play in apps": "Jouer dans les applications",
+  "Enabled": "Activée",
+  "Disabled": "Désactivée",
+  "No songs yet.": "Pas encore de chansons.",
+  "Uploaded as disabled. Set its title and enable it when ready.": "Ajoutée et désactivée. Donnez-lui un titre et activez-la quand elle est prête.",
+
   "Bring our languages to life.": "Faisons vivre nos langues.",
   "Every lesson, word and story you create helps someone connect with Congo.": "Chaque leçon, mot et histoire que vous créez aide quelqu’un à se rapprocher du Congo.",
   "Opening Loba Studio…": "Ouverture de Loba Studio…",

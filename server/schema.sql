@@ -113,3 +113,10 @@ CREATE TABLE IF NOT EXISTS beta_testers (
  created_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(email,platform)
 );
+
+-- Background songs are separate from short lesson recordings (and their cleanup).
+CREATE TABLE IF NOT EXISTS studio_music (
+ id uuid PRIMARY KEY, title text NOT NULL, credit text NOT NULL DEFAULT '',
+ enabled boolean NOT NULL DEFAULT false, position integer NOT NULL DEFAULT 0,
+ mime text NOT NULL, data bytea NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
+);

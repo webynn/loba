@@ -75,6 +75,7 @@
         <button data-view="lessons" class="nav-item"><svg><use href="#i-book"/></svg><span><span data-i18n="Lessons">Leçons</span></span><small id="nav-count"></small></button>
         <button data-view="languages" class="nav-item"><svg><use href="#i-globe"/></svg><span><span data-i18n="Languages">Langues</span></span><small id="nav-languages"></small></button>
         <button data-view="learners" class="nav-item"><svg><use href="#i-cap"/></svg><span><span data-i18n="Learners">Apprenants</span></span><small id="nav-learners"></small></button>
+        <button data-view="music" class="nav-item"><svg><use href="#i-mic"/></svg><span data-i18n="Music">Musique</span></button>
         <button data-view="testers" class="nav-item"><svg><use href="#i-users"/></svg><span>Testeurs · Testers</span></button>
         <button data-view="accounts" class="nav-item"><svg><use href="#i-users"/></svg><span><span data-i18n="Team">Équipe</span></span><small id="nav-pending" class="alert-count" hidden></small></button>
         <button data-view="activity" class="nav-item"><svg><use href="#i-activity"/></svg><span><span data-i18n="Activity">Activité</span></span></button>
@@ -137,6 +138,11 @@
         <section class="panel"><div id="languages-table"></div></section>
       </section>
 
+      <section id="music-view" class="view" hidden>
+        <div class="studio-welcome"><span class="welcome-art" aria-hidden="true">♫</span><div><h2 data-i18n="The sounds of home">Les sons de chez nous</h2><p data-i18n="Songs shuffle quietly on browsing screens. Lessons stay focused on the teacher’s voice. Learners can switch music off.">Les chansons accompagnent la navigation en douceur et en ordre aléatoire. Les leçons restent centrées sur la voix de l’enseignant. Chacun peut couper la musique.</p></div></div>
+        <label class="field"><span data-i18n="Add an audio track">Ajouter une piste audio</span><input id="music-upload" type="file" accept="audio/*"><small data-i18n="Maximum 15 MB per song.">15 Mo maximum par chanson.</small></label>
+        <p id="music-upload-status" role="status" class="muted"></p><div id="music-list" class="music-grid"></div>
+      </section>
       <section id="testers-view" class="view" hidden><div class="panel"><header class="panel-head"><h2>Testeurs · Testers</h2><a href="/testers" target="_blank">Signup page ↗</a></header><div id="testers-list" class="table-wrap"></div></div></section>
       <section id="learners-view" class="view" hidden>
         <div id="learner-stats" class="stats"></div>
