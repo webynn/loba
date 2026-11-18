@@ -400,3 +400,24 @@ test('activity storage clamps out-of-range pages and uses bounded offsets',async
   assert.deepEqual(calls[1].args,[20,40]);
   assert.match(calls[1].sql,/ORDER BY id DESC LIMIT \$1 OFFSET \$2/);
 });
+
+test('feedback validates input, limits submissions and keeps review private', async () => {
+ const {store,app,headers}=authenticated(); const rows=[];
+ const id='11111111-1111-4111-8111-111111111111';
+ store.addFeedback=async data=>{rows.push(data);return id;};
+ store.feedbackPage=async page=>({items:rows,page,pages:1,total:rows.length});
+ store.updateFeedback=async (key,status)=>{assert.equal(key,id);rows[0].status=status;};
+ const request={url:'/api/feedback',method:'POST',headers:{origin},data:{name:' Tester ',email:' TEST@example.com ',platform:'ios',kind:'bug',title:'Audio stopped',details:'Open the lesson, then tap play.',device:'iPhone',consent:true}};
+ assert.equal((await invoke(app,request)).status,201);
+ assert.equal(rows[0].email,'test@example.com');
+ for(const change of [{email:'bad'},{kind:'invalid'},{platform:'other'},{consent:false},{details:''},{title:'x'.repeat(121)},{details:'x'.repeat(5001)}]) assert.equal((await invoke(app,{...request,data:{...request.data,...change}})).status,400);
+ assert.equal((await invoke(app,{...request,headers:{origin:'https://other.example'}})).status,403);
+ assert.equal((await invoke(app,{url:'/api/admin/feedback'})).status,401);
+ assert.equal((await invoke(app,{url:'/api/admin/feedback',headers})).data.total,1);
+ assert.equal((await invoke(app,{url:'/api/admin/feedback?page=bad',headers})).status,400);
+ assert.equal((await invoke(app,{url:'/api/admin/feedback/'+id,method:'PATCH',headers,data:{status:'reviewing'}})).status,200);
+ assert.equal(rows[0].status,'reviewing');
+ assert.equal((await invoke(app,{url:'/api/admin/feedback/'+id,method:'PATCH',headers,data:{status:'oops'}})).status,400);
+ assert.equal((await invoke(app,{url:'/api/admin/feedback/'+id,method:'PATCH',headers:{origin,'content-type':'application/json'},data:{status:'resolved'}})).status,401);
+ store.allowed=false;assert.equal((await invoke(app,request)).status,429);
+});

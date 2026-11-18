@@ -77,7 +77,7 @@
         <button data-view="languages" class="nav-item"><svg><use href="#i-globe"/></svg><span><span data-i18n="Languages">Langues</span></span><small id="nav-languages"></small></button>
         <button data-view="learners" class="nav-item"><svg><use href="#i-cap"/></svg><span><span data-i18n="Learners">Apprenants</span></span><small id="nav-learners"></small></button>
         <button data-view="music" class="nav-item"><svg><use href="#i-mic"/></svg><span data-i18n="Music">Musique</span></button>
-        <button data-view="testers" class="nav-item"><svg><use href="#i-users"/></svg><span>Testeurs · Testers</span></button>
+        <button data-view="feedback" class="nav-item"><svg><use href="#i-users"/></svg><span>Feedback</span></button><button data-view="testers" class="nav-item"><svg><use href="#i-users"/></svg><span>Testeurs · Testers</span></button>
         <button data-view="accounts" class="nav-item"><svg><use href="#i-users"/></svg><span><span data-i18n="Team">Équipe</span></span><small id="nav-pending" class="alert-count" hidden></small></button>
         <button data-view="activity" class="nav-item"><svg><use href="#i-activity"/></svg><span><span data-i18n="Activity">Activité</span></span></button>
       </nav>
@@ -144,7 +144,7 @@
         <label class="field"><span data-i18n="Add an audio track">Ajouter une piste audio</span><input id="music-upload" type="file" accept="audio/*"><small data-i18n="Maximum 15 MB per song.">15 Mo maximum par chanson.</small></label>
         <p id="music-upload-status" role="status" class="muted"></p><div id="music-list" class="music-grid"></div>
       </section>
-      <section id="testers-view" class="view" hidden><div class="panel"><header class="panel-head"><h2>Testeurs · Testers</h2><a href="/testers" target="_blank">Signup page ↗</a></header><div id="testers-list" class="table-wrap"></div></div></section>
+      <section id="feedback-view" class="view" hidden><div class="panel"><header class="panel-head"><h2>Feedback</h2><a href="/feedback" target="_blank">Feedback page ↗</a></header><div id="feedback-list"></div><div class="feedback-paging"><button id="feedback-prev" class="btn">←</button><span id="feedback-page"></span><button id="feedback-next" class="btn">→</button></div></div></section><section id="testers-view" class="view" hidden><div class="panel"><header class="panel-head"><h2>Testeurs · Testers</h2><a href="/testers" target="_blank">Signup page ↗</a></header><div id="testers-list" class="table-wrap"></div></div></section>
       <section id="learners-view" class="view" hidden>
         <div id="learner-stats" class="stats"></div>
         <div class="toolbar">

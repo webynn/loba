@@ -66,6 +66,21 @@ export class Store {
     const result = await this.pool.query('UPDATE studio_music SET title=$2,credit=$3,enabled=$4,position=$5 WHERE id=$1', [id,title,credit,enabled,position]);
     if (!result.rowCount) throw fail(404,'Song not found.');
   }
+  async addFeedback(data) {
+    const id = randomUUID();
+    await this.pool.query('INSERT INTO tester_feedback(id,name,email,platform,kind,title,details,device) VALUES($1,$2,$3,$4,$5,$6,$7,$8)', [id,data.name,data.email,data.platform,data.kind,data.title,data.details,data.device]);
+    return id;
+  }
+  async feedbackPage(page) {
+    const total = Number((await this.pool.query('SELECT count(*) FROM tester_feedback')).rows[0].count);
+    const pages = Math.max(1, Math.ceil(total / 20)); page = Math.min(page,pages);
+    const {rows} = await this.pool.query('SELECT * FROM tester_feedback ORDER BY created_at DESC,id LIMIT 20 OFFSET $1', [(page-1)*20]);
+    return {items:rows,page,pages,total};
+  }
+  async updateFeedback(id,status) {
+    const result = await this.pool.query('UPDATE tester_feedback SET status=$2 WHERE id=$1',[id,status]);
+    if (!result.rowCount) throw fail(404,'Feedback not found.');
+  }
   async joinTesters(name, email, platform) {
     await this.pool.query('INSERT INTO beta_testers(id,name,email,platform) VALUES($1,$2,$3,$4) ON CONFLICT(email,platform) DO NOTHING', [randomUUID(),name,email,platform]);
   }

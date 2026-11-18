@@ -67,6 +67,7 @@ async function refresh() {
 
 // ---------- navigation ----------
 const views = () => ({
+  feedback:["Feedback",StudioI18n.locale === "fr" ? "Bugs, idées et retours des testeurs." : "Bugs, ideas and feedback from testers.",null],
   overview:[t("Overview"),t("Your curriculum at a glance."),'lesson'],
   lessons:[t("Lessons"),t("Write, review and publish units for each language."),'lesson'],
   languages:[t("Languages"),t("Every language Loba teaches, and whether learners can see it."),'language'],
@@ -79,6 +80,7 @@ function navigate(view) {
   state.view=view;
   for(const audio of document.querySelectorAll('#music-list audio')) audio.pause();
   if(view==='music') loadMusic();
+  if(view==='feedback') loadFeedback(1);
   if(view==='testers') loadTesters();
   if(view==='accounts') refreshAccounts();
   if(view==='learners') loadLearners();
@@ -674,3 +676,19 @@ $('music-upload').addEventListener('change',async event=>{
 });
 // Prevent several previews from playing over each other.
 $('music-list').addEventListener('play',event=>{for(const audio of $('music-list').querySelectorAll('audio'))if(audio!==event.target)audio.pause();},true);
+
+let feedbackPage=1, feedbackPages=1;
+const feedbackText=(en,fr)=>StudioI18n.locale==='fr'?fr:en;
+async function loadFeedback(page){
+ $('feedback-list').textContent=feedbackText('Loading…','Chargement…');
+ $('feedback-prev').disabled=$('feedback-next').disabled=true;
+ try {
+  const data=await api('/api/admin/feedback?page='+page);feedbackPage=data.page;feedbackPages=data.pages;
+  $('feedback-list').innerHTML=data.items.length?data.items.map(row=>`<article class="feedback-card"><div class="feedback-meta"><b>${esc(row.platform.toUpperCase())} · ${esc(row.kind)}</b><time>${esc(date(row.created_at))}</time></div><h3>${esc(row.title)}</h3><p class="feedback-details">${esc(row.details)}</p><p>${esc(row.device)}</p><small>${esc(row.name)} · ${esc(row.email)} · #${esc(row.id.slice(0,8))}</small><label>${feedbackText('Status','Statut')} <select data-feedback="${esc(row.id)}">${[['new','New','Nouveau'],['reviewing','Reviewing','En cours'],['resolved','Resolved','Résolu']].map(([v,en,fr])=>`<option value="${v}" ${row.status===v?'selected':''}>${feedbackText(en,fr)}</option>`).join('')}</select></label></article>`).join(''):`<p class="empty">${feedbackText('No feedback yet. Share the feedback page with your testers.','Aucun retour. Partage la page avec tes testeurs.')}</p>`;
+  $('feedback-page').textContent=`${data.page} / ${data.pages} · ${data.total}`;
+  $('feedback-list').querySelectorAll('[data-feedback]').forEach(select=>{select.onchange=async()=>{select.disabled=true;try{await api('/api/admin/feedback/'+select.dataset.feedback,{method:'PATCH',body:JSON.stringify({status:select.value})});toast(feedbackText('Status saved','Statut enregistré'));}catch(error){toast(error.message);await loadFeedback(feedbackPage);}finally{select.disabled=false;}};});
+ }catch(error){$('feedback-list').textContent=error.message;}
+ finally{$('feedback-prev').disabled=feedbackPage<=1;$('feedback-next').disabled=feedbackPage>=feedbackPages;}
+}
+$('feedback-prev').onclick=()=>loadFeedback(feedbackPage-1);
+$('feedback-next').onclick=()=>loadFeedback(feedbackPage+1);

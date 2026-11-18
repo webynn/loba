@@ -80,6 +80,7 @@ function ProfilePage() {
           <button className="avatar" onClick={() => setEditing(true)} aria-label={t('yourName')}>{s.avatar}</button>
           <div style={{ display: 'grid', gap: 4 }}>
             <h1>{s.name || t('learner')}</h1>
+            <a href="/feedback" target="_blank" rel="noopener noreferrer">{ui === 'fr' ? 'Un bug ou une idée ? Donne ton avis ↗' : 'A bug or an idea? Share feedback ↗'}</a>
             <p className="muted" style={{ fontWeight: 700 }}>{t('joined', { lang: langName(s.lang) })}</p>
             <button className="btn small outline" style={{ justifySelf: 'start', marginTop: 6 }} onClick={() => setEditing(true)}>✎ {t('profile')}</button>
           </div>

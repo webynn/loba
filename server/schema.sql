@@ -120,3 +120,13 @@ CREATE TABLE IF NOT EXISTS studio_music (
  enabled boolean NOT NULL DEFAULT false, position integer NOT NULL DEFAULT 0,
  mime text NOT NULL, data bytea NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS tester_feedback (
+ id UUID PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL,
+ platform TEXT NOT NULL CHECK(platform IN ('ios','android','web')),
+ kind TEXT NOT NULL CHECK(kind IN ('bug','idea','other')),
+ title TEXT NOT NULL, details TEXT NOT NULL, device TEXT NOT NULL DEFAULT '',
+ status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new','reviewing','resolved')),
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS tester_feedback_created ON tester_feedback(created_at DESC);

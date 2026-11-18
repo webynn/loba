@@ -102,6 +102,20 @@ export function createApp(store, {origin, production = false, google = null, lea
     try {
       const path = new URL(req.url, origin).pathname;
       const method = req.method;
+      if (method === 'POST' && path === '/api/feedback') {
+        if (!allowedOrigins.has(req.headers.origin)) throw fail(403, 'Request origin is not allowed.');
+        if (!(await store.loginAllowed(hashToken('feedback:' + clientAddress(req))))) throw fail(429, 'Please try again later.');
+        const input = await body(req, 16000);
+        const clean = (key, max, required = true) => {
+          const value = typeof input?.[key] === 'string' ? input[key].trim() : '';
+          if ((required && !value) || value.length > max || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(value)) throw fail(400, 'Please check your feedback details.');
+          return value;
+        };
+        const data = {name:clean('name',80),email:clean('email',254).toLowerCase(),title:clean('title',120),details:clean('details',5000),device:clean('device',160,false),platform:input?.platform,kind:input?.kind};
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) || !['ios','android','web'].includes(data.platform) || !['bug','idea','other'].includes(data.kind) || input?.consent !== true) throw fail(400, 'Please check your email, platform and consent.');
+        const id = await store.addFeedback(data);
+        return json(201, {id});
+      }
       if (method === 'POST' && path === '/api/testers') {
         if (!allowedOrigins.has(req.headers.origin)) throw fail(403, 'Request origin is not allowed.');
         if (!(await store.loginAllowed(hashToken('testers:' + clientAddress(req))))) throw fail(429, 'Please try again later.');
@@ -308,7 +322,19 @@ export function createApp(store, {origin, production = false, google = null, lea
         if (!user) throw fail(401, 'Sign in to continue.');
         if (path === '/api/auth/me' && method === 'GET') return json(200,{user});
         if (path === '/api/auth/logout' && method === 'POST') { await store.logout(tokenHash); res.setHeader('Set-Cookie',cookie('',0)); return json(200,{ok:true}); }
-        if (path === '/api/admin/testers' && method === 'GET') return json(200, {testers:await store.testers()});
+        if (path === '/api/admin/feedback' && method === 'GET') {
+          const raw = new URL(req.url, origin).searchParams.get('page') || '1';
+          if (!/^[1-9]\d{0,6}$/.test(raw)) throw fail(400, 'Invalid page.');
+          return json(200, await store.feedbackPage(Number(raw)));
+        }
+        const feedbackMatch = path.match(/^\/api\/admin\/feedback\/([0-9a-f-]{36})$/i);
+        if (feedbackMatch && method === 'PATCH') {
+          const input = await body(req, 1024);
+          if (!['new','reviewing','resolved'].includes(input?.status)) throw fail(400, 'Invalid status.');
+          await store.updateFeedback(feedbackMatch[1], input.status);
+          return json(200, {ok:true});
+        }
+        if (path === '/api/admin/testers'  && method === 'GET') return json(200, {testers:await store.testers()});
         if (path === '/api/admin/activity' && method === 'GET') {
           const raw = new URL(req.url, origin).searchParams.get('page') || '1';
           if (!/^[1-9]\d{0,6}$/.test(raw)) throw fail(400, 'Invalid activity page.');
@@ -375,7 +401,7 @@ export function createApp(store, {origin, production = false, google = null, lea
         res.writeHead(302, {Location: studioHost ? '/studio' : '/learn/'}); return res.end();
       }
       if (path === '/learn' || path.startsWith('/learn/')) return await serveLearn(res, path, method, learnDir);
-      const files = {'/creators':'../creators/index.html','/creators/':'../creators/index.html','/creators/app.js':'../creators/app.js','/creators/style.css':'../creators/style.css','/testers':'../testers/index.html','/testers/':'../testers/index.html','/testers/app.js':'../testers/app.js','/testers/style.css':'../testers/style.css','/studio':'../admin/index.html','/studio/':'../admin/index.html','/admin':'../admin/index.html','/admin/':'../admin/index.html','/admin/i18n.js':'../admin/i18n.js','/admin/audio-cleanup.js':'../admin/audio-cleanup.js','/admin/app.js':'../admin/app.js','/admin/style.css':'../admin/style.css','/privacy.html':'../privacy.html','/manifest.webmanifest':'../manifest.webmanifest','/icons/icon-192.png':'../icons/icon-192.png','/icons/icon-512.png':'../icons/icon-512.png','/icons/icon-maskable-512.png':'../icons/icon-maskable-512.png','/icons/apple-touch-icon.png':'../icons/apple-touch-icon.png'};
+      const files = {'/feedback':'../feedback/index.html','/feedback/':'../feedback/index.html','/feedback/app.js':'../feedback/app.js','/feedback/style.css':'../feedback/style.css','/creators':'../creators/index.html','/creators/':'../creators/index.html','/creators/app.js':'../creators/app.js','/creators/style.css':'../creators/style.css','/testers':'../testers/index.html','/testers/':'../testers/index.html','/testers/app.js':'../testers/app.js','/testers/style.css':'../testers/style.css','/studio':'../admin/index.html','/studio/':'../admin/index.html','/admin':'../admin/index.html','/admin/':'../admin/index.html','/admin/i18n.js':'../admin/i18n.js','/admin/audio-cleanup.js':'../admin/audio-cleanup.js','/admin/app.js':'../admin/app.js','/admin/style.css':'../admin/style.css','/privacy.html':'../privacy.html','/manifest.webmanifest':'../manifest.webmanifest','/icons/icon-192.png':'../icons/icon-192.png','/icons/icon-512.png':'../icons/icon-512.png','/icons/icon-maskable-512.png':'../icons/icon-maskable-512.png','/icons/apple-touch-icon.png':'../icons/apple-touch-icon.png'};
       const file = path === '/signup' || path === '/signup/' ? '../admin/index.html' : files[path]; if (!file) throw fail(404,'Page not found.');
       res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
       const ext = file.split('.').at(-1);
