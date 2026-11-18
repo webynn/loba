@@ -91,3 +91,13 @@ Decorative animations from LottieFiles are loaded on demand through `src/compone
 ## Masapo storybook
 
 `/learn/story` is a public interactive tale, available in French and English with Lingala and Swahili vocabulary. Content and illustrations live in `learn/src/story/`, with river/night ambience in `audio/sfx.ts`. The homepage links to the book.
+
+## Mboka na biso: the map of the DRC (`/learn/map`)
+
+A geography game open to everyone, linked from the Practice tab. Learners drag (or tap) each of the 26 provinces into place, region by region, then the whole country without outlines. Each province placed shows its capital and one fact; a short quiz, an atlas, and a history and cultures booklet complete it. Progress (stars, discovered provinces) is kept in the browser under `loba-map-v1`.
+
+- `learn/src/map/shapes.ts`: province outlines, generated from geoBoundaries (gbOpen COD ADM1, 2017; © OpenStreetMap contributors, ODbL 1.0) and projected to Web Mercator.
+- `learn/src/map/mapbox.ts`: the satellite background, one Mapbox Static Images request for the same view. It needs a public Mapbox token (`pk.…`) in the `VITE_MAPBOX_TOKEN` variable when the app is built; on Railway, add it to the service's variables and redeploy. The learner pages' Content-Security-Policy allows images from `api.mapbox.com` for this. Without a token the game still works, on a plain green map.
+- `learn/src/map/data.ts`: provinces (capital, former province, main national language, peoples, area, neighbours, fact, hint), history timeline, culture cards and key figures, in French and English. They were compiled in November 2026 from Wikipedia (FR/EN), the Agence Congolaise de Presse and UNESCO's intangible heritage list. Areas differ slightly between sources and are rounded; where several national languages are used in a province, one was chosen. Have a Congolese reviewer check the peoples listed and the language choices; correct anything directly in that file.
+
+Design choices follow what research on children's map learning supports: recall with immediate feedback rather than re-reading, mistakes that teach (a wrong drop names the province it landed on, with no penalty beyond stars), small groups of 3 to 5 provinces, supports that fade (outlines, then none), large landing zones and a tap alternative to dragging, no timer and no leaderboard.

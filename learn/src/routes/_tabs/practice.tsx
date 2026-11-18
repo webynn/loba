@@ -41,6 +41,20 @@ function PracticePage() {
               <p>{listen ? t('listeningText') : t('listeningUnavailable')}</p>
             </span>
           </Link>
+          <Link to="/map" className="tile-card">
+            <span className="icon-tile" style={{ '--tint': 'var(--sky-tint)', fontSize: 34 } as React.CSSProperties}>🗺️</span>
+            <span className="body">
+              <h3>{t('mapGame')}</h3>
+              <p>{t('mapGameText')}</p>
+            </span>
+          </Link>
+          <Link to="/story" className="tile-card">
+            <span className="icon-tile" style={{ '--tint': 'var(--sun-tint)' } as React.CSSProperties}><Art name="book" /></span>
+            <span className="body">
+              <h3>{t('storyGame')}</h3>
+              <p>{t('storyGameText')}</p>
+            </span>
+          </Link>
         </div>
       </div>
       <Rail />
