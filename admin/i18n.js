@@ -51,6 +51,7 @@ const StudioI18n = (() => {
   "Vocabulary": "Vocabulaire",
   "Each word with its French and English meaning, and a recording if you have one.": "Chaque mot avec sa traduction en français et en anglais, et un enregistrement si disponible.",
   "Add word": "Ajouter un mot",
+  "Include in Guess the Word": "Inclure dans le jeu Devine le mot",
   "Word or phrase": "Mot ou expression",
   "Example sentence": "Phrase d’exemple",
   "Example in French": "Exemple en français",

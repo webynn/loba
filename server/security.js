@@ -53,7 +53,7 @@ export function validateLesson(input, languages = ['ln', 'sw']) {
       // An example sentence using the word, shown in the word puzzle. Its translations mean nothing without it.
       const example = string(w?.example ?? '', 'Example sentence', 300, false);
       const exampleFr = string(w?.exampleFr ?? '', 'French example', 300, false), exampleEn = string(w?.exampleEn ?? '', 'English example', 300, false);
-      return {term: string(w?.term, 'Word', 300), fr: string(w?.fr, 'French meaning', 300), en: string(w?.en ?? '', 'English meaning', 300, false), ...(audio ? {audio} : {}),
+      return {...(w?.guessWord === false ? {guessWord: false} : {}), term: string(w?.term, 'Word', 300), fr: string(w?.fr, 'French meaning', 300), en: string(w?.en ?? '', 'English meaning', 300, false), ...(audio ? {audio} : {}),
         ...(example ? {example, ...(exampleFr ? {exampleFr} : {}), ...(exampleEn ? {exampleEn} : {})} : {})};
     }),
     sentences: input.sentences.map(s => {
