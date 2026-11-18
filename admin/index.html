@@ -80,6 +80,7 @@
         <button data-view="activity" class="nav-item"><svg><use href="#i-activity"/></svg><span><span data-i18n="Activity">Activité</span></span></button>
       </nav>
       <div class="side-foot">
+        <div class="studio-language" role="group" aria-label="Langue / Language"><button type="button" data-ui-lang="fr" lang="fr" aria-pressed="true">Français</button><button type="button" data-ui-lang="en" lang="en" aria-pressed="false">English</button></div>
         <a class="side-link" href="/learn" target="_blank" rel="noopener"><svg><use href="#i-external"/></svg><span data-i18n="Open learner app">Ouvrir l’application d’apprentissage</span></a>
         <div class="me"><span id="avatar" class="me-avatar">L</span><span id="user-email" class="me-email"></span><button id="logout" class="icon-btn" title="Se déconnecter" data-i18n-title="Sign out" aria-label="Se déconnecter" data-i18n-aria-label="Sign out"><svg><use href="#i-logout"/></svg></button></div>
       </div>
@@ -97,6 +98,10 @@
       <div id="load-error" class="banner danger" hidden role="alert"><span></span><button id="retry" class="btn"><span data-i18n="Try again">Réessayer</span></button></div>
 
       <section id="overview-view" class="view">
+        <div class="studio-welcome">
+          <span class="welcome-art" aria-hidden="true">🇨🇩</span>
+          <div><span class="eyebrow">Loba · Studio</span><h2 data-i18n="Bring our languages to life.">Faisons vivre nos langues.</h2><p data-i18n="Every lesson, word and story you create helps someone connect with Congo.">Chaque leçon, mot et histoire que vous créez aide quelqu’un à se rapprocher du Congo.</p></div>
+        </div>
         <div id="stats" class="stats"></div>
         <div class="split">
           <section class="panel">

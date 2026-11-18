@@ -1,6 +1,8 @@
 // Studio UI only: lesson content and input values are never translated.
 const StudioI18n = (() => {
   const messages = {
+  "Bring our languages to life.": "Faisons vivre nos langues.",
+  "Every lesson, word and story you create helps someone connect with Congo.": "Chaque leçon, mot et histoire que vous créez aide quelqu’un à se rapprocher du Congo.",
   "Opening Loba Studio…": "Ouverture de Loba Studio…",
   "Sign in": "Se connecter",
   "Create, review and publish lessons for every Loba language.": "Créez, révisez et publiez des leçons pour chaque langue de Loba.",
