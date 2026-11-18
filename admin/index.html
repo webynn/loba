@@ -150,6 +150,8 @@
         <div class="toolbar">
           <label class="search"><svg><use href="#i-search"/></svg><input id="learner-search" type="search" placeholder="Rechercher un nom ou une adresse e-mail" data-i18n-placeholder="Search names and emails" aria-label="Rechercher des apprenants" data-i18n-aria-label="Search learners"></label>
           <div class="toolbar-right">
+            <select id="learner-provider" aria-label="Sign-in method" data-i18n-aria-label="Sign-in method"><option value="all" data-i18n="All sign-in methods">Toutes les connexions</option><option value="google">Google</option><option value="email" data-i18n="Email and password">E-mail et mot de passe</option></select>
+            <button id="refresh-learners" class="btn" data-i18n="Refresh">Actualiser</button>
             <select id="learner-language" aria-label="Langue" data-i18n-aria-label="Language"></select>
             <select id="learner-sort" aria-label="Trier" data-i18n-aria-label="Sort"><option value="recent" data-i18n="Recently active">Activité récente</option><option value="xp" data-i18n="Most XP">Plus de XP</option><option value="streak" data-i18n="Longest streak">Plus longue série</option><option value="new" data-i18n="Newest accounts">Comptes récents</option></select>
           </div>
@@ -167,7 +169,9 @@
       </section>
 
       <section id="activity-view" class="view" hidden>
-        <section class="panel"><div id="activity-list"></div></section>
+        <div class="activity-intro"><div><span class="activity-kicker">LOBA STUDIO</span><h2 data-i18n="Your team’s story">L’histoire de votre équipe</h2><p data-i18n="Every lesson starts with someone sharing what they know.">Chaque leçon commence par un savoir partagé.</p></div><button id="refresh-activity" class="btn" data-i18n="Refresh">Actualiser</button></div>
+        <p id="activity-error" class="form-error" role="alert"></p>
+        <section class="panel activity-panel"><div id="activity-list" aria-live="polite"></div><nav class="activity-pagination" aria-label="Activity pages"><button id="activity-prev" class="btn" data-i18n="Previous">Précédent</button><span id="activity-page" role="status"></span><button id="activity-next" class="btn" data-i18n="Next">Suivant</button></nav></section>
       </section>
     </main>
   </div>

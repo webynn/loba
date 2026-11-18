@@ -1,6 +1,15 @@
 // Studio UI only: lesson content and input values are never translated.
 const StudioI18n = (() => {
   const messages = {
+  "Sign-in method": "Mode de connexion",
+  "All sign-in methods": "Toutes les connexions",
+  "Email and password": "E-mail et mot de passe",
+  "Your team’s story": "L’histoire de votre équipe",
+  "Every lesson starts with someone sharing what they know.": "Chaque leçon commence par un savoir partagé.",
+  "Loading activity…": "Chargement de l’activité…",
+  "Previous": "Précédent",
+  "Next": "Suivant",
+  "Page {page} of {pages} · {total} activities": "Page {page} sur {pages} · {total} activités",
   "Pronunciation": "Prononciation",
   "Example pronunciation": "Prononciation de l’exemple",
   "Clean audio": "Améliorer le son",

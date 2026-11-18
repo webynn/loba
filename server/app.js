@@ -65,7 +65,7 @@ function learnerSummary(row) {
   // A streak only counts if the learner practised today or yesterday (allowing for time zones).
   const current = day && Date.now() - Date.parse(day + 'T00:00:00Z') < 3 * 86400000 ? count(row.streak) : 0;
   return {
-    id: row.id, name: row.name, email: row.email, joined: row.created_at, lastSync: row.updated_at || null,
+    id: row.id, name: row.name, email: row.email, googleLinked: !!row.google_linked, passwordLogin: !!row.password_login, joined: row.created_at, lastSync: row.updated_at || null,
     language: /^[a-z]{2,3}$/.test(row.lang || '') ? row.lang : null, xp: count(row.xp), streak: current, bestStreak: count(row.best_streak),
     lessonsDone: count(row.lessons_done), lastActiveDay: day, goal: count(row.goal), wordsLearned: count(row.words), progress,
   };
@@ -309,6 +309,11 @@ export function createApp(store, {origin, production = false, google = null, lea
         if (path === '/api/auth/me' && method === 'GET') return json(200,{user});
         if (path === '/api/auth/logout' && method === 'POST') { await store.logout(tokenHash); res.setHeader('Set-Cookie',cookie('',0)); return json(200,{ok:true}); }
         if (path === '/api/admin/testers' && method === 'GET') return json(200, {testers:await store.testers()});
+        if (path === '/api/admin/activity' && method === 'GET') {
+          const raw = new URL(req.url, origin).searchParams.get('page') || '1';
+          if (!/^[1-9]\d{0,6}$/.test(raw)) throw fail(400, 'Invalid activity page.');
+          return json(200, await store.activityPage(Number(raw), 20));
+        }
         if (path === '/api/admin/learners' && method === 'GET') return json(200,{learners:(await store.learnerList()).map(learnerSummary)});
         if (path === '/api/admin/accounts' && method === 'GET') return json(200,{accounts:await store.pendingAccounts()});
         const approval=path.match(/^\/api\/admin\/accounts\/([0-9a-f-]{36})\/approve$/i);

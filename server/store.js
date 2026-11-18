@@ -207,7 +207,7 @@ export class Store {
    * so values are read as text here and checked in JavaScript rather than cast in SQL.
    */
   async learnerList() {
-    return (await this.pool.query(`SELECT l.id,l.name,l.email,l.created_at,p.updated_at,
+    return (await this.pool.query(`SELECT l.id,l.name,l.email,l.created_at,p.updated_at,(l.google_sub IS NOT NULL) AS google_linked,(l.password_hash IS NOT NULL) AS password_login,
         p.state->>'lang' AS lang,p.state->>'xp' AS xp,p.state->>'streak' AS streak,p.state->>'bestStreak' AS best_streak,
         p.state->>'lessonsDone' AS lessons_done,p.state->>'lastActiveDay' AS last_active_day,p.state->>'goal' AS goal,
         CASE WHEN jsonb_typeof(p.state->'progress')='object' THEN p.state->'progress' ELSE '{}'::jsonb END AS progress,
@@ -219,6 +219,13 @@ export class Store {
   async learnerCount() { return Number((await this.pool.query('SELECT count(*)::int AS n FROM learners')).rows[0].n); }
   async saveAudio({ id, mime, data, email }) { await this.pool.query('INSERT INTO studio_audio(id,mime,data,admin_email) VALUES($1,$2,$3,$4)', [id, mime, data, email]); }
   async audio(id) { return (await this.pool.query('SELECT mime,data FROM studio_audio WHERE id=$1', [id])).rows[0]; }
+  async activityPage(page = 1, pageSize = 20) {
+    const total = Number((await this.pool.query('SELECT count(*)::int AS n FROM studio_activity')).rows[0].n);
+    const pages = Math.max(1, Math.ceil(total / pageSize));
+    page = Math.min(page, pages);
+    const items = (await this.pool.query('SELECT id,admin_email,action,lesson_title,created_at FROM studio_activity ORDER BY id DESC LIMIT $1 OFFSET $2', [pageSize, (page - 1) * pageSize])).rows;
+    return {items,total,page,pages,pageSize};
+  }
   async activity() { return (await this.pool.query('SELECT * FROM studio_activity ORDER BY id DESC LIMIT 15')).rows; }
   async mutate({ id, content, version, action, email }) {
     const db = await this.pool.connect();

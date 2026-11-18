@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const SWATCHES = ['#1c9bef','#2bb673','#ef4e4e','#e0a100','#ff8a1f','#8b5cf6','#0fa3b1','#8f4f1c'];
-const state = {lessons:[],languages:[],activity:[],learners:0,learnerRows:null,learnerSearch:'',learnerLanguage:'all',learnerSort:'recent',pending:0,view:'overview',status:'all',language:'all',search:'',editing:null,editingLanguage:null,dirty:false,busy:false};
+const state = {lessons:[],languages:[],activity:[],learners:0,learnerRows:null,learnerSearch:'',learnerLanguage:'all',learnerSort:'recent',learnerProvider:'all',activityPage:1,activityPages:1,activityTotal:0,activityItems:null,activityRequest:0,pending:0,view:'overview',status:'all',language:'all',search:'',editing:null,editingLanguage:null,dirty:false,busy:false};
 let toastTimer;
 
 function toast(message) { $('toast').textContent=message; $('toast').hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('toast').hidden=true,3500); }
@@ -82,6 +82,7 @@ function navigate(view) {
   if(view==='testers') loadTesters();
   if(view==='accounts') refreshAccounts();
   if(view==='learners') loadLearners();
+  if(view==='activity') loadActivity(1);
   for(const section of document.querySelectorAll('.view')) section.hidden=section.id!==view+'-view';
   document.querySelectorAll('.nav-item').forEach(b=>{ const on=b.dataset.view===view; b.classList.toggle('active',on); if(on)b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
   const [title,subtitle,action]=view==='testers'?['Testeurs · Testers','iOS / Android',null]:views()[view];
@@ -105,6 +106,37 @@ function activities(items) {
   return items.map(item=>{ const [ic,verb]=ACTIVITY[item.action]||['activity',item.action]; const kind=item.action.split(' ').at(-1);
     return `<div class="activity"><span class="activity-icon ${esc(kind)}">${icon(ic)}</span><div><p><b>${esc(item.lesson_title)}</b> ${esc(t(verb))}</p><small>${esc(item.admin_email)} · ${relative(item.created_at)}</small></div></div>`; }).join('');
 }
+function providerBadge(l) {
+  const label=l.googleLinked?(l.passwordLogin?'Google + '+t('Email and password'):'Google'):t('Email and password');
+  return `<span class="provider-badge ${l.googleLinked?'google':''}">${l.googleLinked?'<b aria-hidden="true">G</b>':''}${esc(label)}</span>`;
+}
+async function loadActivity(page=1) {
+  const request=++state.activityRequest;
+  $('activity-error').textContent='';
+  $('activity-prev').disabled=$('activity-next').disabled=true;
+  $('activity-list').setAttribute('aria-busy','true');
+  try {
+    const data=await api('/api/admin/activity?page='+page);
+    if(request!==state.activityRequest)return;
+    Object.assign(state,{activityItems:data.items,activityPage:data.page,activityPages:data.pages,activityTotal:data.total});
+    renderActivity();
+  } catch(error) { if(request===state.activityRequest){$('activity-error').textContent=error.message;renderActivity();} }
+  finally { if(request===state.activityRequest)$('activity-list').removeAttribute('aria-busy'); }
+}
+function renderActivity() {
+  const items=state.activityItems;
+  if(!items){$('activity-list').innerHTML=`<div class="empty">${t('Loading activity…')}</div>`;return;}
+  let day='';
+  $('activity-list').innerHTML=items.length?items.map(item=>{
+    const when=new Date(item.created_at), group=when.toLocaleDateString(StudioI18n.locale,{year:'numeric',month:'long',day:'numeric'});
+    const heading=group!==day?`<h3 class="activity-day">${esc(group)}</h3>`:'';day=group;
+    const [ic,verb]=ACTIVITY[item.action]||['activity',item.action];
+    return heading+`<article class="activity-event"><span class="activity-icon ${esc(item.action.split(' ').at(-1))}">${icon(ic)}</span><div class="activity-copy"><span class="activity-action">${esc(t(verb))}</span><h4>${esc(item.lesson_title)}</h4><p>${esc(item.admin_email)}</p></div><time datetime="${esc(item.created_at)}" title="${esc(when.toLocaleString(StudioI18n.locale))}">${esc(when.toLocaleTimeString(StudioI18n.locale,{hour:'2-digit',minute:'2-digit'}))}</time></article>`;
+  }).join(''):activities([]);
+  $('activity-page').textContent=t('Page {page} of {pages} · {total} activities',{page:state.activityPage,pages:state.activityPages,total:state.activityTotal});
+  $('activity-prev').disabled=state.activityPage<=1;
+  $('activity-next').disabled=state.activityPage>=state.activityPages;
+}
 function lessonTable(rows, {empty=t("No lessons match.")}={}) {
   if(!rows.length) return `<div class="empty"><b>${empty}</b><span>${t("Try another filter, or start a new unit.")}</span><button class="btn new-lesson">${icon('plus')}${t("New lesson")}</button></div>`;
   return `<table class="table"><thead><tr><th>${t("Lesson")}</th><th>${t("Language")}</th><th>${t("Status")}</th><th>${t("Content")}</th><th>${t("Updated")}</th></tr></thead><tbody>${rows.map(row=>`<tr data-edit="${esc(row.id)}"><td><button class="lesson-cell" data-edit="${esc(row.id)}">${lessonIcon(row.content)}<span><b>${esc(row.content.title)}</b><small>${t('Unit {n}',{n:row.content.position})}${row.content.titleEn?' · '+esc(row.content.titleEn):''}</small></span></button></td><td class="indent">${langTag(row.content.language)}</td><td class="indent">${badge(row)}</td><td class="num hide-sm">${plural(row.content.words.length,'word')} · ${plural(row.content.sentences.length,'sentence')}</td><td class="num hide-sm">${date(row.updated_at)}</td></tr>`).join('')}</tbody></table>`;
@@ -126,7 +158,7 @@ function render() {
     .map(([label,value,sub,view])=>`<div class="stat${view?' link':''}" ${view?`data-view="${view}" role="button" tabindex="0"`:''}><span>${t(label)}</span><b>${value.toLocaleString(StudioI18n.locale)}</b><small>${t(sub)}</small></div>`).join('');
   $('nav-learners').textContent=state.learners||'';
   $('language-summary').innerHTML=languageSummary();
-  $('recent-activity').innerHTML=activities(state.activity.slice(0,5)); $('activity-list').innerHTML=activities(state.activity);
+  $('recent-activity').innerHTML=activities(state.activity.slice(0,5)); renderActivity();
   $('recent-table').innerHTML=lessonTable([...all].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,5),{empty:t("No lessons yet.")});
   const options=state.languages.map(l=>`<option value="${esc(l.code)}">${esc(l['name_'+StudioI18n.locale]||l.name_en)}</option>`).join('');
   $('language-filter').innerHTML=`<option value="all">${t("All languages")}</option>${options}`; $('language-filter').value=state.language;
@@ -380,10 +412,10 @@ function renderLearners() {
   $('learner-language').value=state.learnerLanguage;
   const q=state.learnerSearch.toLowerCase().trim();
   const sorters={recent:(a,b)=>(b.lastActiveDay||'').localeCompare(a.lastActiveDay||'')||new Date(b.joined)-new Date(a.joined),xp:(a,b)=>b.xp-a.xp,streak:(a,b)=>b.streak-a.streak||b.bestStreak-a.bestStreak,new:(a,b)=>new Date(b.joined)-new Date(a.joined)};
-  const list=rows.filter(l=>(state.learnerLanguage==='all'||l.language===state.learnerLanguage)&&(!q||`${l.name} ${l.email}`.toLowerCase().includes(q))).sort(sorters[state.learnerSort]);
+  const list=rows.filter(l=>(state.learnerProvider==='all'||state.learnerProvider==='google'&&l.googleLinked||state.learnerProvider==='email'&&l.passwordLogin)&&(state.learnerLanguage==='all'||l.language===state.learnerLanguage)&&(!q||`${l.name} ${l.email}`.toLowerCase().includes(q))).sort(sorters[state.learnerSort]);
   if(!rows.length) { $('learners-table').innerHTML=`<div class="empty"><b>${t("No learners yet.")}</b><span>${t("People who create an account in the learner app appear here.")}</span></div>`; return; }
   if(!list.length) { $('learners-table').innerHTML=`<div class="empty"><b>${t("No learners match.")}</b><span>${t("Try another search or language.")}</span></div>`; return; }
-  $('learners-table').innerHTML=`<table class="table"><thead><tr><th>${t("Learner")}</th><th>${t("Learning")}</th><th>XP</th><th>${t("Streak")}</th><th>${t("Lessons")}</th><th>${t("Words")}</th><th>${t("Last practice")}</th><th>${t("Joined")}</th></tr></thead><tbody>${list.map(l=>`<tr data-learner="${esc(l.id)}"><td><span class="lesson-cell"><span class="me-avatar">${esc(l.name[0]?.toUpperCase()||'?')}</span><span><b>${esc(l.name)}</b><small>${esc(l.email)}</small></span></span></td><td class="indent">${l.language?langTag(l.language):`<span class="muted">${t("Not chosen")}</span>`}</td><td class="num indent">${l.xp.toLocaleString(StudioI18n.locale)} XP</td><td class="num hide-sm">${l.streak?`<span class="streak">${icon('flame')}${l.streak}</span>`:'<span class="muted">0</span>'}</td><td class="num hide-sm">${l.lessonsDone}</td><td class="num hide-sm">${l.wordsLearned}</td><td class="num indent">${lastSeen(l)}</td><td class="num hide-sm">${date(l.joined)}</td></tr>`).join('')}</tbody></table>`;
+  $('learners-table').innerHTML=`<table class="table"><thead><tr><th>${t("Learner")}</th><th>${t("Learning")}</th><th>XP</th><th>${t("Streak")}</th><th>${t("Lessons")}</th><th>${t("Words")}</th><th>${t("Last practice")}</th><th>${t("Joined")}</th></tr></thead><tbody>${list.map(l=>`<tr data-learner="${esc(l.id)}"><td><span class="lesson-cell"><span class="me-avatar">${esc(l.name[0]?.toUpperCase()||'?')}</span><span><b>${esc(l.name)}</b><small>${esc(l.email)}</small>${providerBadge(l)}</span></span></td><td class="indent">${l.language?langTag(l.language):`<span class="muted">${t("Not chosen")}</span>`}</td><td class="num indent">${l.xp.toLocaleString(StudioI18n.locale)} XP</td><td class="num hide-sm">${l.streak?`<span class="streak">${icon('flame')}${l.streak}</span>`:'<span class="muted">0</span>'}</td><td class="num hide-sm">${l.lessonsDone}</td><td class="num hide-sm">${l.wordsLearned}</td><td class="num indent">${lastSeen(l)}</td><td class="num hide-sm">${date(l.joined)}</td></tr>`).join('')}</tbody></table>`;
   applyVars($('learners-table'));
 }
 function openLearner(id) {
@@ -398,7 +430,7 @@ function openLearner(id) {
     return `<section class="course"><header><span class="lang-tag" data-c="${esc(lang(code).color)}">${esc(lang(code)['name_'+StudioI18n.locale])}</span><small>${t('{n} of {total} units complete',{n:done,total:units.length})}${code===l.language?' · '+t('Learning now'):''}</small></header>
       ${units.map(u=>{ const n=l.progress[u.id]||0; return `<div class="course-unit ${n>=4?'done':n?'started':''}">${lessonIcon(u.content)}<span><b>${esc(u.content.title)}</b><small>${t('Unit {n}',{n:u.content.position})} · ${n>=4?t("Complete"):n?t('{n} of 4 lessons',{n}):t("Not started")}</small></span><span class="meter" data-c="${esc(lang(code).color)}"><i data-pct="${n*25}"></i></span></div>`; }).join('')}</section>`;
   }).join('');
-  $('learner-body').innerHTML=`<div class="tiles">${tiles.map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>
+  $('learner-body').innerHTML=`${providerBadge(l)}<div class="tiles">${tiles.map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>
     <p class="muted small">${t('Joined')} ${date(l.joined)} · ${t('Last practice')} ${lastSeen(l).toLowerCase()}${l.lastSync?` · ${t('Progress saved')} ${relative(l.lastSync).toLowerCase()}`:''}</p>
     ${courses||`<div class="empty"><b>${t("No lessons started yet.")}</b><span>${t("Their progress shows here once they finish a lesson.")}</span></div>`}`;
   applyVars($('learner-body'));
@@ -468,6 +500,11 @@ $('lesson-form').oninput=e=>{ state.dirty=true; if(e.target.dataset.field==='ter
 $('lesson-form').onchange=e=>{ if(e.target.type==='radio') { state.dirty=true; updatePreview(); } };
 $('learner-search').oninput=e=>{ state.learnerSearch=e.target.value; renderLearners(); };
 $('learner-language').onchange=e=>{ state.learnerLanguage=e.target.value; renderLearners(); };
+$('learner-provider').onchange=e=>{state.learnerProvider=e.target.value;renderLearners();};
+$('refresh-learners').onclick=loadLearners;
+$('refresh-activity').onclick=()=>loadActivity(1);
+$('activity-prev').onclick=()=>loadActivity(state.activityPage-1);
+$('activity-next').onclick=()=>loadActivity(state.activityPage+1);
 $('learner-sort').onchange=e=>{ state.learnerSort=e.target.value; renderLearners(); };
 $('close-learner').onclick=()=>$('learner-dialog').close();
 document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.matches?.('.stat.link')) e.target.click(); });

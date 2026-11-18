@@ -369,3 +369,25 @@ test('phrase and example recordings retain original audio references through val
   const empty=validateLesson({...input,words:[{...input.words[0],example:''}]});
   assert.equal(empty.words[0].exampleAudio,undefined);
 });
+
+test('learner roster identifies Google-only and linked accounts without exposing credentials',async()=>{
+  const {store,app,headers}=authenticated();
+  store.learnerList=async()=>[
+    {id:'g',name:'Google learner',email:'g@example.com',google_linked:true,password_login:false,google_sub:'private-google-id'},
+    {id:'both',name:'Linked learner',email:'both@example.com',google_linked:true,password_login:true,password_hash:'private-hash'},
+    {id:'e',name:'Email learner',email:'e@example.com',google_linked:false,password_login:true}
+  ];
+  const {data,status}=await invoke(app,{url:'/api/admin/learners',headers});
+  assert.equal(status,200);assert.equal(data.learners.length,3);
+  assert.deepEqual(data.learners.map(l=>[l.googleLinked,l.passwordLogin]),[[true,false],[true,true],[false,true]]);
+  assert.ok(data.learners.every(l=>l.google_sub===undefined&&l.password_hash===undefined));
+});
+
+test('activity paging requires an editor and validates page inputs',async()=>{
+  const {store,app,headers}=authenticated();
+  store.activityPage=async(page,pageSize)=>({items:[],page,pageSize,total:50,pages:3});
+  assert.equal((await invoke(app,{url:'/api/admin/activity'})).status,401);
+  for(const page of ['0','-1','1.5','abc','10000000'])assert.equal((await invoke(app,{url:'/api/admin/activity?page='+page,headers})).status,400);
+  const {data}=await invoke(app,{url:'/api/admin/activity?page=2',headers});
+  assert.equal(data.page,2);assert.equal(data.pageSize,20);
+});
