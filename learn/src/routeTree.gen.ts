@@ -14,6 +14,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as AuthCompleteRouteImport } from './routes/auth-complete'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as MapRouteImport } from './routes/map'
+import { Route as PuzzleRouteImport } from './routes/puzzle'
 import { Route as SessionRouteImport } from './routes/session'
 import { Route as StoryRouteImport } from './routes/story'
 import { Route as WelcomeRouteImport } from './routes/welcome'
@@ -46,6 +47,11 @@ const HomeRoute = HomeRouteImport.update({
 const MapRoute = MapRouteImport.update({
   id: '/map',
   path: '/map',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PuzzleRoute = PuzzleRouteImport.update({
+  id: '/puzzle',
+  path: '/puzzle',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SessionRoute = SessionRouteImport.update({
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/auth-complete': typeof AuthCompleteRoute
   '/home': typeof HomeRoute
   '/map': typeof MapRoute
+  '/puzzle': typeof PuzzleRoute
   '/session': typeof SessionRoute
   '/story': typeof StoryRoute
   '/welcome': typeof WelcomeRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByTo {
   '/auth-complete': typeof AuthCompleteRoute
   '/home': typeof HomeRoute
   '/map': typeof MapRoute
+  '/puzzle': typeof PuzzleRoute
   '/session': typeof SessionRoute
   '/story': typeof StoryRoute
   '/welcome': typeof WelcomeRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/auth-complete': typeof AuthCompleteRoute
   '/home': typeof HomeRoute
   '/map': typeof MapRoute
+  '/puzzle': typeof PuzzleRoute
   '/session': typeof SessionRoute
   '/story': typeof StoryRoute
   '/welcome': typeof WelcomeRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/auth-complete'
     | '/home'
     | '/map'
+    | '/puzzle'
     | '/session'
     | '/story'
     | '/welcome'
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/auth-complete'
     | '/home'
     | '/map'
+    | '/puzzle'
     | '/session'
     | '/story'
     | '/welcome'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/auth-complete'
     | '/home'
     | '/map'
+    | '/puzzle'
     | '/session'
     | '/story'
     | '/welcome'
@@ -196,6 +208,7 @@ export interface RootRouteChildren {
   AuthCompleteRoute: typeof AuthCompleteRoute
   HomeRoute: typeof HomeRoute
   MapRoute: typeof MapRoute
+  PuzzleRoute: typeof PuzzleRoute
   SessionRoute: typeof SessionRoute
   StoryRoute: typeof StoryRoute
   WelcomeRoute: typeof WelcomeRoute
@@ -237,6 +250,13 @@ declare module '@tanstack/react-router' {
       path: '/map'
       fullPath: '/map'
       preLoaderRoute: typeof MapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/puzzle': {
+      id: '/puzzle'
+      path: '/puzzle'
+      fullPath: '/puzzle'
+      preLoaderRoute: typeof PuzzleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/session': {
@@ -329,6 +349,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCompleteRoute: AuthCompleteRoute,
   HomeRoute: HomeRoute,
   MapRoute: MapRoute,
+  PuzzleRoute: PuzzleRoute,
   SessionRoute: SessionRoute,
   StoryRoute: StoryRoute,
   WelcomeRoute: WelcomeRoute,
