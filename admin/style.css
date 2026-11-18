@@ -514,3 +514,10 @@ body:has(#workspace:not([hidden])) > .studio-language { display: none; }
   #editor .sheet-tabs { overflow-x:auto; flex-shrink:0; }
   #editor .recording-action { flex:1 1 auto; }
 }
+#editor .sheet-body { min-height:0; }
+#editor .sheet-tabs { overflow-y:hidden; }
+@media(max-width:700px) {
+  #editor .sheet-foot > div:last-child { display:grid; grid-template-columns:.75fr 1.25fr 1fr; flex-wrap:nowrap; }
+  #editor .sheet-foot > div:last-child button { min-width:0; width:auto; font-size:12px; padding:8px 5px; }
+  #editor .sheet-foot > div:last-child svg { display:none; }
+}
