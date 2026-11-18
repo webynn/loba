@@ -391,3 +391,12 @@ test('activity paging requires an editor and validates page inputs',async()=>{
   const {data}=await invoke(app,{url:'/api/admin/activity?page=2',headers});
   assert.equal(data.page,2);assert.equal(data.pageSize,20);
 });
+
+test('activity storage clamps out-of-range pages and uses bounded offsets',async()=>{
+  const {Store}=await import('../server/store.js');
+  const calls=[];
+  const store=new Store({query:async(sql,args)=>{calls.push({sql,args});return sql.includes('count(*)')?{rows:[{n:45}]}:{rows:[{id:5}]};}});
+  assert.deepEqual(await store.activityPage(99,20),{items:[{id:5}],total:45,page:3,pages:3,pageSize:20});
+  assert.deepEqual(calls[1].args,[20,40]);
+  assert.match(calls[1].sql,/ORDER BY id DESC LIMIT \$1 OFFSET \$2/);
+});
