@@ -130,3 +130,9 @@ CREATE TABLE IF NOT EXISTS tester_feedback (
  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS tester_feedback_created ON tester_feedback(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS tester_feedback_images (
+ id UUID PRIMARY KEY, feedback_id UUID NOT NULL REFERENCES tester_feedback(id) ON DELETE CASCADE,
+ mime TEXT NOT NULL, data BYTEA NOT NULL CHECK(octet_length(data) <= 2097152), position INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS tester_feedback_images_parent ON tester_feedback_images(feedback_id);

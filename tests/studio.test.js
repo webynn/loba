@@ -421,3 +421,30 @@ test('feedback validates input, limits submissions and keeps review private', as
  assert.equal((await invoke(app,{url:'/api/admin/feedback/'+id,method:'PATCH',headers:{origin,'content-type':'application/json'},data:{status:'resolved'}})).status,401);
  store.allowed=false;assert.equal((await invoke(app,request)).status,429);
 });
+
+test('feedback attachments enforce type/count/size limits and require Studio access to view', async () => {
+ const {store,app,headers}=authenticated();
+ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64');
+ let attachments;
+ store.addFeedback=async (data,images)=>{attachments=images;return '11111111-1111-4111-8111-111111111111';};
+ const request={url:'/api/feedback',method:'POST',headers:{origin},data:{name:'Tester',email:'test@example.com',platform:'web',kind:'bug',title:'Screenshot',details:'See screenshot',consent:true,images:[png.toString('base64')]}};
+ assert.equal((await invoke(app,request)).status,201);assert.equal(attachments[0].mime,'image/png');assert.deepEqual(attachments[0].data,png);
+ for(const images of ['bad',Array(4).fill(png.toString('base64')),['not base64!'],[Buffer.from('<svg/>').toString('base64')],['A'.repeat(2800004)]]) assert.equal((await invoke(app,{...request,data:{...request.data,images}})).status,400);
+ const url='/api/admin/feedback-images/11111111-1111-4111-8111-111111111111';
+ store.feedbackImage=async()=>({mime:'image/png',data:png});
+ assert.equal((await invoke(app,{url})).status,401);
+ const response=await invoke(app,{url,headers});assert.equal(response.status,200);assert.equal(response.headers['content-type'],'image/png');assert.equal(response.headers['cache-control'],'no-store');
+ store.feedbackImage=async()=>null;assert.equal((await invoke(app,{url,headers})).status,404);
+});
+
+test('feedback and images save atomically and roll back when an attachment fails', async () => {
+ const {Store}=await import('../server/store.js');
+ for(const rejectImage of [false,true]){
+  const queries=[];let released=false;
+  const db={query:async(sql,args)=>{queries.push(sql);if(rejectImage&&sql.startsWith('INSERT INTO tester_feedback_images'))throw new Error('storage failed');return {rows:[]};},release:()=>{released=true;}};
+  const store=new Store({connect:async()=>db});
+  const save=()=>store.addFeedback({name:'Tester',email:'test@example.com',platform:'web',kind:'bug',title:'Test',details:'Details',device:''},[{mime:'image/png',data:Buffer.from('image')}]);
+  if(rejectImage)await assert.rejects(save,/storage failed/);else await save();
+  assert.equal(queries.at(-1),rejectImage?'ROLLBACK':'COMMIT');assert.equal(released,true);
+ }
+});

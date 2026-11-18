@@ -105,7 +105,17 @@ export function createApp(store, {origin, production = false, google = null, lea
       if (method === 'POST' && path === '/api/feedback') {
         if (!allowedOrigins.has(req.headers.origin)) throw fail(403, 'Request origin is not allowed.');
         if (!(await store.loginAllowed(hashToken('feedback:' + clientAddress(req))))) throw fail(429, 'Please try again later.');
-        const input = await body(req, 16000);
+        const input = await body(req, 9 * 1024 * 1024);
+        const attachments = input?.images ?? [];
+        if (!Array.isArray(attachments) || attachments.length > 3) throw fail(400, 'Maximum 3 images.');
+        const images = attachments.map(value => {
+          if (typeof value !== 'string' || value.length > 2800000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(value)) throw fail(400, 'Invalid image.');
+          const data = Buffer.from(value, 'base64');
+          if (data.length > 2 * 1024 * 1024) throw fail(400, 'Image is too large.');
+          const mime = data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])) ? 'image/png' : data[0] === 255 && data[1] === 216 && data[2] === 255 ? 'image/jpeg' : data.toString('ascii',0,4) === 'RIFF' && data.toString('ascii',8,12) === 'WEBP' ? 'image/webp' : null;
+          if (!mime) throw fail(400, 'Use JPEG, PNG or WebP images.');
+          return {data,mime};
+        });
         const clean = (key, max, required = true) => {
           const value = typeof input?.[key] === 'string' ? input[key].trim() : '';
           if ((required && !value) || value.length > max || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(value)) throw fail(400, 'Please check your feedback details.');
@@ -113,7 +123,7 @@ export function createApp(store, {origin, production = false, google = null, lea
         };
         const data = {name:clean('name',80),email:clean('email',254).toLowerCase(),title:clean('title',120),details:clean('details',5000),device:clean('device',160,false),platform:input?.platform,kind:input?.kind};
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) || !['ios','android','web'].includes(data.platform) || !['bug','idea','other'].includes(data.kind) || input?.consent !== true) throw fail(400, 'Please check your email, platform and consent.');
-        const id = await store.addFeedback(data);
+        const id = await store.addFeedback(data, images);
         return json(201, {id});
       }
       if (method === 'POST' && path === '/api/testers') {
@@ -326,6 +336,13 @@ export function createApp(store, {origin, production = false, google = null, lea
           const raw = new URL(req.url, origin).searchParams.get('page') || '1';
           if (!/^[1-9]\d{0,6}$/.test(raw)) throw fail(400, 'Invalid page.');
           return json(200, await store.feedbackPage(Number(raw)));
+        }
+        const imageMatch = path.match(/^\/api\/admin\/feedback-images\/([0-9a-f-]{36})$/i);
+        if (imageMatch && method === 'GET') {
+          const image = await store.feedbackImage(imageMatch[1]);
+          if (!image) throw fail(404, 'Image not found.');
+          res.writeHead(200, {'Content-Type':image.mime,'Content-Length':image.data.length,'Content-Disposition':'inline','Content-Security-Policy':"default-src 'none'; sandbox"});
+          return res.end(image.data);
         }
         const feedbackMatch = path.match(/^\/api\/admin\/feedback\/([0-9a-f-]{36})$/i);
         if (feedbackMatch && method === 'PATCH') {

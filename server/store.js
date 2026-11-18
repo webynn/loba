@@ -66,15 +66,23 @@ export class Store {
     const result = await this.pool.query('UPDATE studio_music SET title=$2,credit=$3,enabled=$4,position=$5 WHERE id=$1', [id,title,credit,enabled,position]);
     if (!result.rowCount) throw fail(404,'Song not found.');
   }
-  async addFeedback(data) {
-    const id = randomUUID();
-    await this.pool.query('INSERT INTO tester_feedback(id,name,email,platform,kind,title,details,device) VALUES($1,$2,$3,$4,$5,$6,$7,$8)', [id,data.name,data.email,data.platform,data.kind,data.title,data.details,data.device]);
-    return id;
+  async addFeedback(data, images = []) {
+    const id = randomUUID(), db = await this.pool.connect();
+    try {
+      await db.query('BEGIN');
+      await db.query('INSERT INTO tester_feedback(id,name,email,platform,kind,title,details,device) VALUES($1,$2,$3,$4,$5,$6,$7,$8)', [id,data.name,data.email,data.platform,data.kind,data.title,data.details,data.device]);
+      for (const [position,image] of images.entries()) await db.query('INSERT INTO tester_feedback_images(id,feedback_id,mime,data,position) VALUES($1,$2,$3,$4,$5)', [randomUUID(),id,image.mime,image.data,position]);
+      await db.query('COMMIT'); return id;
+    } catch(error) { await db.query('ROLLBACK'); throw error; }
+    finally { db.release(); }
+  }
+  async feedbackImage(id) {
+    return (await this.pool.query('SELECT mime,data FROM tester_feedback_images WHERE id=$1',[id])).rows[0];
   }
   async feedbackPage(page) {
     const total = Number((await this.pool.query('SELECT count(*) FROM tester_feedback')).rows[0].count);
     const pages = Math.max(1, Math.ceil(total / 20)); page = Math.min(page,pages);
-    const {rows} = await this.pool.query('SELECT * FROM tester_feedback ORDER BY created_at DESC,id LIMIT 20 OFFSET $1', [(page-1)*20]);
+    const {rows} = await this.pool.query(`SELECT f.*, COALESCE((SELECT json_agg(i.id ORDER BY i.position) FROM tester_feedback_images i WHERE i.feedback_id=f.id),'[]'::json) AS images FROM tester_feedback f ORDER BY created_at DESC,id LIMIT 20 OFFSET $1`, [(page-1)*20]);
     return {items:rows,page,pages,total};
   }
   async updateFeedback(id,status) {
