@@ -403,3 +403,11 @@ input.narrow { max-width: 140px; }
 .auth { min-height:calc(100vh - 60px); }
 .side { top:60px; }
 @media(max-width:760px) { .side { top:0; } }
+
+#puzzle-simulator {background:#f2f8fd;border-radius:16px;padding:14px;margin:12px 0}
+#puzzle-simulator summary {cursor:pointer;font-weight:750}
+#draft-grid {display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;max-width:360px}
+#draft-grid button {aspect-ratio:1;padding:0;border:1px solid #cfdeea;border-radius:7px;background:white;color:#292640;font-weight:750;cursor:pointer}
+#draft-grid .selected {outline:2px solid #1376be}
+#draft-grid .found {background:#b9e9db}
+#draft-grid .crossing {background:#ffd67c}

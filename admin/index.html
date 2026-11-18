@@ -192,6 +192,12 @@
           <div class="section-row"><div><h3><span data-i18n="Words">Mots</span></h3><p class="muted"><span data-i18n="Each word or phrase with its meaning. Learners need at least 4 words. Record how it sounds if you can.">Chaque mot ou expression avec sa traduction. Prévoyez au moins 4 mots. Ajoutez un enregistrement si possible.</span></p></div><button type="button" id="add-word" class="btn"><svg><use href="#i-plus"/></svg><span data-i18n="Add word">Ajouter un mot</span></button></div>
           <div class="rows-head vocab-grid" aria-hidden="true"><span>#</span><span><span data-i18n="Word or phrase">Mot ou expression</span></span><span><span data-i18n="French">Français</span></span><span><span data-i18n="English">Anglais</span></span><span><span data-i18n="Recording">Enregistrement</span></span><span></span></div>
           <p class="puzzle-note"><svg><use href="#i-info"/></svg><span><b id="puzzle-status"></b> <span data-i18n="Under each word, write a short sentence that uses it, then its translations. Learners discover it when they find the word.">Sous chaque mot, écrivez une courte phrase qui l’utilise, puis ses traductions. Les apprenants la découvrent en trouvant le mot.</span></span></p>
+          <details id="puzzle-simulator">
+            <summary data-i18n="Try the word grid">Tester la grille</summary>
+            <p id="grid-guide"></p><div id="draft-grid"></div><p id="grid-words"></p>
+            <button type="button" id="grid-solution" aria-pressed="false" data-i18n="Show solution">Afficher la solution</button>
+            <p id="grid-result" role="status"></p>
+          </details>
           <div id="word-rows"></div>
         </section>
         <section class="form-section" data-panel="sentences" hidden>

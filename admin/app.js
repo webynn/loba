@@ -233,6 +233,7 @@ function wordRow(word={term:'',fr:'',en:''}) {
 // The word puzzle hides words of 3 to 8 letters; longer phrases stay in lessons only.
 const puzzleFits=term=>{ const n=[...term].filter(c=>/\p{L}/u.test(c)).length; return n>=3&&n<=8&&term.trim().split(/\s+/).length<=2; };
 function puzzleStatus() {
+  if ($('puzzle-simulator').open) renderDraftGrid();
   let fit=0, withExample=0;
   for(const row of $('word-rows').children) {
     const ok=puzzleFits(row.querySelector('[data-field="term"]').value);
@@ -468,3 +469,98 @@ document.addEventListener('studio-language-change',()=>{
   if(state.editing || $('editor').open) editorChrome(state.editing,readEditor());
   $('language-heading').textContent=state.editingLanguage?t('Edit {name}',{name:state.editingLanguage['name_'+StudioI18n.locale]}):t('Add a language');
 });
+
+// Use the learner game's 8 × 8 board and unlock its directions by unit.
+function makeDraftGrid(words, level) {
+  const steps = [[0,1],[1,0]];
+  if (level >= 1) steps.push([1,1],[-1,1]);
+  if (level >= 4) steps.push([0,-1],[-1,0]);
+  if (level >= 8) steps.push([-1,-1],[1,-1]);
+  const ordered = [...words].sort((a,b) => b.letters.length-a.letters.length);
+  let best;
+  for (let attempt=0; attempt<12; attempt++) {
+    const cells = Array(64).fill(''), entries = [];
+    for (const word of ordered) {
+      let score = -1, path;
+      for (let origin=0; origin<64; origin++) for (const [dy,dx] of steps) {
+        const positions = [];
+        let shared = 0;
+        for (const letter of word.letters) {
+          const i = positions.length, y = (origin>>3)+i*dy, x = origin%8+i*dx, k = y*8+x;
+          if (x<0 || x>=8 || y<0 || y>=8 || (cells[k] && cells[k]!==letter)) break;
+          if (cells[k]) shared++;
+          positions.push(k);
+        }
+        if (positions.length!==word.letters.length || shared===positions.length) continue;
+        const rank = shared + Math.random();
+        if (rank>score) { score=rank; path=positions; }
+      }
+      if (!path) continue;
+      path.forEach((k,i)=>cells[k]=word.letters[i]);
+      entries.push({...word,path});
+    }
+    if (!best || entries.length>best.entries.length) best={cells,entries};
+    if (entries.length===words.length) break;
+  }
+  const alphabet=ordered.flatMap(w=>w.letters);
+  best.cells=best.cells.map(c=>c || alphabet[Math.floor(Math.random()*alphabet.length)]);
+  return best;
+}
+
+let draftKey='', draftPuzzle, firstCell=null, foundPaths=new Set();
+function renderDraftGrid() {
+  const seen=new Set(), words=[];
+  for (const row of $('word-rows').children) {
+    const term=row.querySelector('.term').value.trim();
+    const letters=[...term.normalize('NFC').toUpperCase()].filter(c=>/\p{L}/u.test(c));
+    const key=letters.join('');
+    if (!puzzleFits(term.normalize('NFC')) || seen.has(key)) continue;
+    seen.add(key);
+    words.push({term,letters});
+    if (words.length===6) break;
+  }
+  const level=Math.max(0,Number($('lesson-form').elements.position.value)-1);
+  const key=JSON.stringify([level,words]);
+  if (key===draftKey) return;
+  draftKey=key;
+  draftPuzzle=words.length>=3 ? makeDraftGrid(words,level) : null;
+  firstCell=null; foundPaths.clear();
+  $('grid-result').textContent='';
+  $('grid-solution').setAttribute('aria-pressed','false');
+  $('grid-solution').hidden=!draftPuzzle;
+  $('grid-guide').textContent=t(draftPuzzle?'Sample grid from this draft. Select the first and last letters of a word.':'Add three distinct words of 3–8 letters for a preview.');
+  $('draft-grid').replaceChildren();
+  for (const [i,letter] of (draftPuzzle?.cells||[]).entries()) {
+    const button=document.createElement('button');
+    button.type='button'; button.textContent=letter; button.dataset.cell=i;
+    button.onclick=()=>selectDraftCell(i);
+    $('draft-grid').append(button);
+  }
+  $('grid-words').textContent=(draftPuzzle?.entries||[]).map(w=>w.term).join(' · ');
+}
+function selectDraftCell(i) {
+  if (firstCell===null) firstCell=i;
+  else {
+    const word=draftPuzzle.entries.find(({path})=>
+      (path[0]===firstCell && path.at(-1)===i)||(path[0]===i && path.at(-1)===firstCell));
+    if (word) foundPaths.add(word);
+    $('grid-result').textContent=word ? '✓ '+word.term : t('Try another pair of letters.');
+    firstCell=null;
+  }
+  paintDraftCells();
+}
+function paintDraftCells() {
+  const solution=$('grid-solution').getAttribute('aria-pressed')==='true';
+  const entries=solution ? draftPuzzle.entries : [...foundPaths];
+  for (const [i,button] of [...$('draft-grid').children].entries()) {
+    const hits=entries.filter(w=>w.path.includes(i)).length;
+    button.className=i===firstCell?'selected':hits>1?'crossing':hits?'found':'';
+  }
+}
+$('grid-solution').onclick=event=>{
+  const button=event.currentTarget;
+  button.setAttribute('aria-pressed',String(button.getAttribute('aria-pressed')!=='true'));
+  paintDraftCells();
+};
+$('puzzle-simulator').ontoggle=()=>{ if ($('puzzle-simulator').open) renderDraftGrid(); };
+$('lesson-form').elements.position.addEventListener('input',puzzleStatus);
