@@ -48,7 +48,14 @@ export function validateLesson(input, languages = ['ln', 'sw']) {
     language: input.language, position: input.position,
     title: string(input.title, 'Title', 160), titleEn: string(input.titleEn ?? '', 'English title', 160, false),
     icon: string(input.icon || '📚', 'Icon', 20), tip: string(input.tip ?? '', 'Teaching note', 3000, false),
-    words: input.words.map(w => { const audio = audioId(w?.audio); return {term: string(w?.term, 'Word', 300), fr: string(w?.fr, 'French meaning', 300), en: string(w?.en ?? '', 'English meaning', 300, false), ...(audio ? {audio} : {})}; }),
+    words: input.words.map(w => {
+      const audio = audioId(w?.audio);
+      // An example sentence using the word, shown in the word puzzle. Its translations mean nothing without it.
+      const example = string(w?.example ?? '', 'Example sentence', 300, false);
+      const exampleFr = string(w?.exampleFr ?? '', 'French example', 300, false), exampleEn = string(w?.exampleEn ?? '', 'English example', 300, false);
+      return {term: string(w?.term, 'Word', 300), fr: string(w?.fr, 'French meaning', 300), en: string(w?.en ?? '', 'English meaning', 300, false), ...(audio ? {audio} : {}),
+        ...(example ? {example, ...(exampleFr ? {exampleFr} : {}), ...(exampleEn ? {exampleEn} : {})} : {})};
+    }),
     sentences: input.sentences.map(s => {
       if (!Array.isArray(s?.distractors) || s.distractors.length > 12) throw fail(400, 'Use at most 12 distractors per sentence.');
       return { fr: string(s.fr, 'French prompt', 600), en: string(s.en ?? '', 'English prompt', 600, false), answer: string(s.answer, 'Answer', 600), distractors: s.distractors.map(d => string(d, 'Distractor', 100)) };

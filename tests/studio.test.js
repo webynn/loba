@@ -90,6 +90,11 @@ test('content validation rejects malformed fields and excessive sizes',()=>{
   assert.throws(()=>validateLesson({...lesson,title:' '}),{status:400});
   assert.throws(()=>validateLesson({...lesson,position:0}),{status:400});
   assert.throws(()=>validateLesson({...lesson,words:[null]}),{status:400});
+  // Example sentences for the word puzzle are optional; translations without a sentence are dropped.
+  const withExample=validateLesson({...lesson,words:[{term:'Mbote',fr:'Bonjour',example:' Mbote na yo ! ',exampleFr:'Bonjour à toi !',exampleEn:''},{term:'Te',fr:'Non',exampleFr:'orphan'}]}).words;
+  assert.deepEqual(withExample[0],{term:'Mbote',fr:'Bonjour',en:'',example:'Mbote na yo !',exampleFr:'Bonjour à toi !'});
+  assert.deepEqual(withExample[1],{term:'Te',fr:'Non',en:''});
+  assert.throws(()=>validateLesson({...lesson,words:[{term:'Mbote',fr:'Bonjour',example:'x'.repeat(301)}]}),{status:400});
   assert.throws(()=>validateLesson({...lesson,words:Array(101).fill(lesson.words[0])}),{status:400});
   assert.throws(()=>validateLesson({...lesson,sentences:[{...lesson.sentences[0],distractors:'bad'}]}),{status:400});
   assert.equal(validateLesson({...lesson,privilege:'admin'}).privilege,undefined);

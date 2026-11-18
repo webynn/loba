@@ -172,6 +172,7 @@ function renumber() {
   [...$('sentence-rows').children].forEach((r,i)=>r.querySelector('.idx').textContent=i+1);
   const words=[...$('word-rows').children].filter(r=>r.querySelector('[data-field="term"]').value.trim()).length;
   $('word-count').textContent=words; $('word-count').classList.toggle('warn',words<4);
+  puzzleStatus();
   $('sentence-count').textContent=$('sentence-rows').children.length;
 }
 function switchTab(name) {
@@ -226,8 +227,19 @@ function openEditor(id) {
 }
 function wordRow(word={term:'',fr:'',en:''}) {
   const row=document.createElement('div'); row.className='word-row vocab-grid';
-  row.innerHTML=`<span class="idx"></span><input class="term" data-field="term" value="${esc(word.term)}" maxlength="300" required placeholder="Mbote" aria-label="${esc(t("Word or phrase"))}"><input class="fr" data-field="fr" value="${esc(word.fr)}" maxlength="300" required placeholder="Bonjour" aria-label="${esc(t("French meaning"))}"><input class="en" data-field="en" value="${esc(word.en)}" maxlength="300" placeholder="Hello" aria-label="${esc(t("English meaning"))}"><span class="audio"><input type="hidden" data-field="audio" value="${esc(word.audio||'')}"><button type="button" class="icon-btn sm a-record" aria-label="${esc(t("Record"))}">${icon('mic')}</button><button type="button" class="icon-btn sm a-upload" aria-label="${esc(t("Upload audio"))}">${icon('upload')}</button><button type="button" class="icon-btn sm a-play" aria-label="${esc(t("Listen"))}" hidden>${icon('play')}</button><button type="button" class="icon-btn sm a-clear danger" aria-label="${esc(t("Remove recording"))}" hidden>${icon('x')}</button><input type="file" accept="audio/*" hidden><span class="state"></span></span><button type="button" class="icon-btn sm danger remove" aria-label="${esc(t("Remove word"))}">${icon('trash')}</button><p class="audio-msg"></p>`;
+  row.innerHTML=`<span class="idx"></span><input class="term" data-field="term" value="${esc(word.term)}" maxlength="300" required placeholder="Mbote" aria-label="${esc(t("Word or phrase"))}"><input class="fr" data-field="fr" value="${esc(word.fr)}" maxlength="300" required placeholder="Bonjour" aria-label="${esc(t("French meaning"))}"><input class="en" data-field="en" value="${esc(word.en)}" maxlength="300" placeholder="Hello" aria-label="${esc(t("English meaning"))}"><span class="audio"><input type="hidden" data-field="audio" value="${esc(word.audio||'')}"><button type="button" class="icon-btn sm a-record" aria-label="${esc(t("Record"))}">${icon('mic')}</button><button type="button" class="icon-btn sm a-upload" aria-label="${esc(t("Upload audio"))}">${icon('upload')}</button><button type="button" class="icon-btn sm a-play" aria-label="${esc(t("Listen"))}" hidden>${icon('play')}</button><button type="button" class="icon-btn sm a-clear danger" aria-label="${esc(t("Remove recording"))}" hidden>${icon('x')}</button><input type="file" accept="audio/*" hidden><span class="state"></span></span><button type="button" class="icon-btn sm danger remove" aria-label="${esc(t("Remove word"))}">${icon('trash')}</button><p class="audio-msg"></p><div class="example"><input data-field="example" value="${esc(word.example||'')}" maxlength="300" placeholder="${esc(t("Example sentence"))}" aria-label="${esc(t("Example sentence"))}"><input data-field="exampleFr" value="${esc(word.exampleFr||'')}" maxlength="300" placeholder="${esc(t("Example in French"))}" aria-label="${esc(t("Example in French"))}"><input data-field="exampleEn" value="${esc(word.exampleEn||'')}" maxlength="300" placeholder="${esc(t("Example in English"))}" aria-label="${esc(t("Example in English"))}"></div>`;
   $('word-rows').append(row); audioControls(row); renumber(); return row;
+}
+// The word puzzle hides words of 3 to 8 letters; longer phrases stay in lessons only.
+const puzzleFits=term=>{ const n=[...term].filter(c=>/\p{L}/u.test(c)).length; return n>=3&&n<=8&&term.trim().split(/\s+/).length<=2; };
+function puzzleStatus() {
+  let fit=0, withExample=0;
+  for(const row of $('word-rows').children) {
+    const ok=puzzleFits(row.querySelector('[data-field="term"]').value);
+    row.querySelector('.example').classList.toggle('off',!ok);
+    if(ok) { fit++; if(row.querySelector('[data-field="example"]').value.trim()) withExample++; }
+  }
+  $('puzzle-status').textContent=t('Word puzzle: {fit} words fit the grid, {done} have an example sentence.',{fit,done:withExample});
 }
 function sentenceRow(sentence={fr:'',en:'',answer:'',distractors:[]}) {
   const row=document.createElement('div'); row.className='sentence-row';
@@ -237,7 +249,7 @@ function sentenceRow(sentence={fr:'',en:'',answer:'',distractors:[]}) {
 function readEditor() {
   const fields=new FormData($('lesson-form'));
   const pick=row=>Object.fromEntries([...row.querySelectorAll('[data-field]')].map(el=>[el.dataset.field,el.value.trim()]));
-  const words=[...$('word-rows').children].map(pick).filter(w=>w.term||w.fr||w.en||w.audio).map(w=>{ if(!w.audio) delete w.audio; return w; });
+  const words=[...$('word-rows').children].map(pick).filter(w=>w.term||w.fr||w.en||w.audio).map(w=>{ if(!w.audio) delete w.audio; if(!w.example) { delete w.example; delete w.exampleFr; delete w.exampleEn; } else for(const k of ['exampleFr','exampleEn']) if(!w[k]) delete w[k]; return w; });
   return {language:fields.get('language'),position:Number(fields.get('position')),icon:fields.get('icon'),title:fields.get('title'),titleEn:fields.get('titleEn'),tip:fields.get('tip'),
     words,sentences:[...$('sentence-rows').children].map(row=>{ const s=pick(row); s.distractors=s.distractors.split(',').map(t=>t.trim()).filter(Boolean); return s; })};
 }
@@ -285,7 +297,7 @@ async function mutateLesson(action) {
 function closeEditor() { if(state.busy) return; if(state.dirty&&!confirm(t("Discard your unsaved changes?"))) return; state.dirty=false; $('editor').close(); }
 function preview() {
   const c=readEditor(), l=lang(c.language);
-  $('preview-content').innerHTML=`<div class="preview-title"><span class="big">${esc(c.icon)}</span><p class="eyebrow">${esc(l['name_'+StudioI18n.locale]||l.name_en)} · ${t('Unit {n}',{n:c.position})}</p><h2>${esc(c.title)||t("Untitled lesson")}</h2>${c.titleEn?`<p class="muted">${esc(c.titleEn)}</p>`:''}</div>${c.tip?`<p class="preview-note">${esc(c.tip)}</p>`:''}<h3>${t("Words")}</h3>${c.words.length?`<div class="preview-list">${c.words.map(w=>`<div><b>${esc(w.term)}</b><span>${esc(w.fr)}${w.en?' · '+esc(w.en):''}</span></div>`).join('')}</div>`:`<p class="muted">${t("No words yet.")}</p>`}${c.sentences.length?`<h3>${t("Sentences")}</h3><div class="preview-list">${c.sentences.map(s=>`<div><b>${esc(s.fr)}</b><span>${esc(s.answer)}</span></div>`).join('')}</div>`:''}`;
+  $('preview-content').innerHTML=`<div class="preview-title"><span class="big">${esc(c.icon)}</span><p class="eyebrow">${esc(l['name_'+StudioI18n.locale]||l.name_en)} · ${t('Unit {n}',{n:c.position})}</p><h2>${esc(c.title)||t("Untitled lesson")}</h2>${c.titleEn?`<p class="muted">${esc(c.titleEn)}</p>`:''}</div>${c.tip?`<p class="preview-note">${esc(c.tip)}</p>`:''}<h3>${t("Words")}</h3>${c.words.length?`<div class="preview-list">${c.words.map(w=>`<div><b>${esc(w.term)}</b><span>${esc(w.fr)}${w.en?' · '+esc(w.en):''}</span>${w.example?`<em>${esc(w.example)}${w.exampleFr?' — '+esc(w.exampleFr):''}</em>`:''}</div>`).join('')}</div>`:`<p class="muted">${t("No words yet.")}</p>`}${c.sentences.length?`<h3>${t("Sentences")}</h3><div class="preview-list">${c.sentences.map(s=>`<div><b>${esc(s.fr)}</b><span>${esc(s.answer)}</span></div>`).join('')}</div>`:''}`;
   $('preview').showModal();
 }
 
@@ -426,6 +438,7 @@ $('primary-action').onclick=()=>views()[state.view][2]==='language'?openLanguage
 $('search').oninput=e=>{ state.search=e.target.value; render(); };
 $('language-filter').onchange=e=>{ state.language=e.target.value; render(); };
 $('retry').onclick=refresh;
+$('word-rows').addEventListener('input',puzzleStatus);
 $('add-word').onclick=()=>{ wordRow().querySelector('input').focus(); state.dirty=true; };
 $('add-sentence').onclick=()=>{ sentenceRow().querySelector('input').focus(); state.dirty=true; };
 $('lesson-form').oninput=e=>{ state.dirty=true; if(e.target.dataset.field==='term') renumber(); else updatePreview(); };
