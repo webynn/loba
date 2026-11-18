@@ -141,33 +141,49 @@ function render() {
 }
 
 // ---------- recordings ----------
-let recorder=null, player=null;
+let recorder=null, player=null, requestingMic=false;
 async function uploadAudio(blob) {
   if(blob.size>1500000) throw new Error(t("Keep recordings under 1.5 MB."));
   const response=await fetch('/api/admin/audio',{method:'POST',credentials:'same-origin',headers:{'Content-Type':blob.type||'application/octet-stream'},body:blob});
   const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(t(data.error)||t("Upload failed.")); return data.id;
 }
+function recordingMarkup(field, value='', original='') {
+  return `<div class="recording-panel"><span class="recording-caption">${t(field==='exampleAudio'?'Example pronunciation':'Pronunciation')}</span><div class="audio"><input type="hidden" data-field="${field}" value="${esc(value)}"><input type="hidden" data-field="${field}Original" value="${esc(original)}">${[['record','mic','Record'],['upload','upload','Upload audio'],['play','play','Listen'],['clean','sparkles','Clean audio'],['restore','undo','Restore original'],['clear','x','Remove recording']].map(([name,i,label])=>`<button type="button" class="a-${name} recording-action">${['sparkles','undo'].includes(i)?'':icon(i)}<span>${t(label)}</span></button>`).join('')}<input type="file" accept="audio/*" hidden><span class="state" role="status"></span></div><p class="audio-msg" role="status"></p></div>`;
+}
 function audioControls(row) {
-  const input=row.querySelector('[data-field="audio"]'), stateEl=row.querySelector('.audio .state'), msg=row.querySelector('.audio-msg');
-  const [record,upload,play,clear]=['record','upload','play','clear'].map(n=>row.querySelector(`.a-${n}`)), file=row.querySelector('input[type=file]');
-  const paint=(note='')=>{ const has=!!input.value; play.hidden=clear.hidden=!has; record.classList.toggle('has',has); stateEl.textContent=has?t("Recorded"):''; stateEl.classList.toggle('ok',has); msg.textContent=note; };
-  const attach=async blob=>{ stateEl.textContent=t("Uploading…"); try{ input.value=await uploadAudio(blob); state.dirty=true; paint(); }catch(error){ paint(t(error.message)); } };
-  record.onclick=async()=>{
-    if(recorder){ recorder.stop(); return; }
-    if(!navigator.mediaDevices||!window.MediaRecorder){ paint(t("This browser can’t record. Upload a file instead.")); return; }
-    try {
-      const stream=await navigator.mediaDevices.getUserMedia({audio:true}); const chunks=[]; const active=recorder=new MediaRecorder(stream);
-      active.ondataavailable=e=>chunks.push(e.data);
-      active.onstop=()=>{ stream.getTracks().forEach(t=>t.stop()); recorder=null; record.classList.remove('recording'); record.innerHTML=icon('mic'); record.setAttribute('aria-label',t("Record")); attach(new Blob(chunks,{type:active.mimeType})); };
-      active.start(); record.classList.add('recording'); record.innerHTML=icon('stop'); record.setAttribute('aria-label',t("Stop recording")); stateEl.textContent=t("Recording…");
-      setTimeout(()=>{ if(recorder===active) active.stop(); },15000);
-    } catch { paint(t("Microphone access was blocked. Allow it, or upload a file.")); }
-  };
-  upload.onclick=()=>file.click();
-  file.onchange=()=>{ if(file.files[0]) attach(file.files[0]); file.value=''; };
-  play.onclick=()=>{ player?.pause(); player=new Audio(`/api/v1/audio/${input.value}`); player.play().catch(()=>paint(t("This recording can’t be played here."))); };
-  clear.onclick=()=>{ input.value=''; state.dirty=true; paint(); };
-  paint();
+  row.querySelectorAll('.recording-panel').forEach(panel=>{
+    const inputs=panel.querySelectorAll('input[type=hidden]'), input=inputs[0], original=inputs[1], stateEl=panel.querySelector('.state'), msg=panel.querySelector('.audio-msg');
+    const buttons=Object.fromEntries(['record','upload','play','clean','restore','clear'].map(n=>[n,panel.querySelector(`.a-${n}`)])), file=panel.querySelector('input[type=file]');
+    let pending=false;
+    const paint=(note='')=>{ const has=!!input.value; buttons.play.hidden=buttons.clean.hidden=buttons.clear.hidden=!has; buttons.restore.hidden=!original.value; stateEl.textContent=has?t('Recorded'):t('No recording yet'); stateEl.classList.toggle('ok',has); msg.textContent=note; };
+    const attach=async(blob,clean=false)=>{ pending=true; state.audioPending=(state.audioPending||0)+1; Object.values(buttons).forEach(b=>b.disabled=true); stateEl.textContent=t('Uploading…'); try{ const id=await uploadAudio(blob); if(clean) original.value=original.value||input.value; else original.value=''; input.value=id; state.dirty=true; paint(); return true; }catch(error){ paint(t(error.message)); return false; }finally{ pending=false; state.audioPending--; Object.values(buttons).forEach(b=>b.disabled=false); } };
+    buttons.record.onclick=async()=>{
+      if(recorder){ recorder.stop(); return; }
+      if(pending||requestingMic)return;
+      if(!navigator.mediaDevices||!window.MediaRecorder){ paint(t('This browser can’t record. Upload a file instead.')); return; }
+      requestingMic=true;
+      let stream;
+      try {
+        stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+        if(!panel.isConnected||!$('editor').open){stream.getTracks().forEach(t=>t.stop());return;}
+        const chunks=[], active=recorder=new MediaRecorder(stream); state.dirty=true;
+        active.ondataavailable=e=>chunks.push(e.data);
+        active.onstop=()=>{stream.getTracks().forEach(t=>t.stop());recorder=null;buttons.record.classList.remove('recording');buttons.record.querySelector('span').textContent=t('Record'); if(panel.isConnected&&$('editor').open)attach(new Blob(chunks,{type:active.mimeType}));};
+        active.start(); buttons.record.classList.add('recording'); buttons.record.querySelector('span').textContent=t('Stop recording'); stateEl.textContent=t('Recording…');
+        setTimeout(()=>{if(recorder===active)active.stop();},45000);
+      }catch{stream?.getTracks().forEach(t=>t.stop());paint(t('Microphone access was blocked. Allow it, or upload a file.'));}finally{requestingMic=false;}
+    };
+    buttons.upload.onclick=()=>file.click(); file.onchange=()=>{if(file.files[0])attach(file.files[0]);file.value='';};
+    buttons.play.onclick=()=>{player?.pause();player=new Audio(`/api/v1/audio/${input.value}`);player.play().catch(()=>paint(t('This recording can’t be played here.')));};
+    buttons.clear.onclick=()=>{player?.pause();input.value='';original.value='';state.dirty=true;paint();};
+    buttons.restore.onclick=()=>{player?.pause();input.value=original.value;original.value='';state.dirty=true;paint();};
+    buttons.clean.onclick=async()=>{
+      if(pending)return; pending=true; state.audioPending=(state.audioPending||0)+1; Object.values(buttons).forEach(b=>b.disabled=true);
+      try{const res=await fetch(`/api/v1/audio/${input.value}`);if(!res.ok)throw Error(t('This recording can’t be played here.'));const cleaned=await StudioAudio.clean(await res.arrayBuffer());if(await attach(cleaned,true))paint(t('Volume balanced and low rumble reduced. Listen before publishing.'));}
+      catch(error){paint(error.message);}finally{pending=false;state.audioPending--;Object.values(buttons).forEach(b=>b.disabled=false);}
+    };
+    paint();
+  });
 }
 
 // ---------- lesson editor ----------
@@ -231,7 +247,7 @@ function openEditor(id) {
 }
 function wordRow(word={term:'',fr:'',en:''}) {
   const row=document.createElement('div'); row.className='word-row vocab-grid';
-  row.innerHTML=`<span class="idx"></span><input class="term" data-field="term" value="${esc(word.term)}" maxlength="300" required placeholder="Mbote" aria-label="${esc(t("Word or phrase"))}"><input class="fr" data-field="fr" value="${esc(word.fr)}" maxlength="300" required placeholder="Bonjour" aria-label="${esc(t("French meaning"))}"><input class="en" data-field="en" value="${esc(word.en)}" maxlength="300" placeholder="Hello" aria-label="${esc(t("English meaning"))}"><span class="audio"><input type="hidden" data-field="audio" value="${esc(word.audio||'')}"><button type="button" class="icon-btn sm a-record" aria-label="${esc(t("Record"))}">${icon('mic')}</button><button type="button" class="icon-btn sm a-upload" aria-label="${esc(t("Upload audio"))}">${icon('upload')}</button><button type="button" class="icon-btn sm a-play" aria-label="${esc(t("Listen"))}" hidden>${icon('play')}</button><button type="button" class="icon-btn sm a-clear danger" aria-label="${esc(t("Remove recording"))}" hidden>${icon('x')}</button><input type="file" accept="audio/*" hidden><span class="state"></span></span><button type="button" class="icon-btn sm danger remove" aria-label="${esc(t("Remove word"))}">${icon('trash')}</button><p class="audio-msg"></p><label style="grid-column: 2 / -1"><input type="checkbox" data-field="guessWord" ${word.guessWord !== false ? "checked" : ""}> ${t("Include in Guess the Word")}</label><div class="example"><input data-field="example" value="${esc(word.example||'')}" maxlength="300" placeholder="${esc(t("Example sentence"))}" aria-label="${esc(t("Example sentence"))}"><input data-field="exampleFr" value="${esc(word.exampleFr||'')}" maxlength="300" placeholder="${esc(t("Example in French"))}" aria-label="${esc(t("Example in French"))}"><input data-field="exampleEn" value="${esc(word.exampleEn||'')}" maxlength="300" placeholder="${esc(t("Example in English"))}" aria-label="${esc(t("Example in English"))}"></div>`;
+  row.innerHTML=`<div class="entry-head"><span class="idx"></span><b>${t('Word or phrase')}</b><button type="button" class="icon-btn danger remove" aria-label="${esc(t('Remove word'))}">${icon('trash')}</button></div><div class="entry-fields">${[['term','Word or phrase'],['fr','French meaning'],['en','English meaning']].map(([key,label])=>`<label class="field">${t(label)}<input data-field="${key}" value="${esc(word[key]||'')}" maxlength="300" ${key!=='en'?'required':''}></label>`).join('')}</div>${recordingMarkup('audio',word.audio,word.audioOriginal)}<label class="game-inclusion"><input type="checkbox" data-field="guessWord" ${word.guessWord!==false?'checked':''}> <span>${t('Include in Guess the Word')}</span></label><div class="example">${[['example','Example sentence'],['exampleFr','Example in French'],['exampleEn','Example in English']].map(([key,label])=>`<label class="field">${t(label)}<input data-field="${key}" value="${esc(word[key]||'')}" maxlength="300"></label>`).join('')}${recordingMarkup('exampleAudio',word.exampleAudio,word.exampleAudioOriginal)}</div>`;
   $('word-rows').append(row); audioControls(row); renumber(); return row;
 }
 // The word puzzle hides words of 3 to 8 letters; longer phrases stay in lessons only.
@@ -249,18 +265,19 @@ function puzzleStatus() {
 function sentenceRow(sentence={fr:'',en:'',answer:'',distractors:[]}) {
   const row=document.createElement('div'); row.className='sentence-row';
   row.innerHTML=`<span class="idx"></span><div class="sentence-fields"><label class="field">${t("Prompt in French")}<input data-field="fr" value="${esc(sentence.fr)}" required maxlength="600" placeholder="Je vais bien"></label><label class="field">${t("Prompt in English")}<input data-field="en" value="${esc(sentence.en)}" maxlength="600" placeholder="I’m fine"></label><label class="field">${t("Correct answer")}<input data-field="answer" value="${esc(sentence.answer)}" required maxlength="600" placeholder="Nazali malamu"></label><label class="field">${t("Distractors")}<input data-field="distractors" value="${esc(sentence.distractors.join(', '))}" placeholder="Ozali, yo"><small>${t("Separate with commas.")}</small></label></div><button type="button" class="icon-btn sm danger remove" aria-label="${esc(t("Remove sentence"))}">${icon('trash')}</button>`;
-  $('sentence-rows').append(row); renumber(); return row;
+  row.querySelector('.sentence-fields').insertAdjacentHTML('beforeend',recordingMarkup('audio',sentence.audio,sentence.audioOriginal));
+  $('sentence-rows').append(row); audioControls(row); renumber(); return row;
 }
 function readEditor() {
   const fields=new FormData($('lesson-form'));
   const pick=row=>Object.fromEntries([...row.querySelectorAll('[data-field]')].map(el=>[el.dataset.field,el.type==="checkbox" ? el.checked : el.value.trim()]));
-  const words=[...$('word-rows').children].map(pick).filter(w=>w.term||w.fr||w.en||w.audio).map(w=>{ if(!w.audio) delete w.audio; if(!w.example) { delete w.example; delete w.exampleFr; delete w.exampleEn; } else for(const k of ['exampleFr','exampleEn']) if(!w[k]) delete w[k]; return w; });
+  const words=[...$('word-rows').children].map(pick).filter(w=>w.term||w.fr||w.en||w.audio).map(w=>{ for(const key of ['audio','audioOriginal','exampleAudio','exampleAudioOriginal']) if(!w[key]) delete w[key]; if(!w.example) { delete w.example; delete w.exampleFr; delete w.exampleEn; delete w.exampleAudio; delete w.exampleAudioOriginal; } else for(const k of ['exampleFr','exampleEn']) if(!w[k]) delete w[k]; return w; });
   return {language:fields.get('language'),position:Number(fields.get('position')),icon:fields.get('icon'),title:fields.get('title'),titleEn:fields.get('titleEn'),tip:fields.get('tip'),
-    words,sentences:[...$('sentence-rows').children].map(row=>{ const s=pick(row); s.distractors=s.distractors.split(',').map(t=>t.trim()).filter(Boolean); return s; })};
+    words,sentences:[...$('sentence-rows').children].map(row=>{ const s=pick(row); if(!s.audio)delete s.audio; if(!s.audioOriginal)delete s.audioOriginal; s.distractors=s.distractors.split(',').map(t=>t.trim()).filter(Boolean); return s; })};
 }
 function validEditor() {
   // Empty trailing word rows are ignored; everything else must be complete.
-  for(const row of $('word-rows').children) { const inputs=[...row.querySelectorAll('input[data-field="term"],input[data-field="fr"]')]; const used=[...row.querySelectorAll('input[data-field]')].some(i=>i.value.trim()); inputs.forEach(i=>i.required=used); }
+  for(const row of $('word-rows').children) { const inputs=[...row.querySelectorAll('input[data-field="term"],input[data-field="fr"]')]; const used=[...row.querySelectorAll('input[data-field]:not([type=checkbox])')].some(i=>i.value.trim()); inputs.forEach(i=>i.required=used); }
   // Fields on another tab can't show their message, so open the tab holding the first problem.
   const invalid=$('lesson-form').querySelector('input:invalid,textarea:invalid');
   if(invalid) switchTab(invalid.closest('[data-panel]').dataset.panel);
@@ -273,6 +290,7 @@ function savedRow(row) {
   editorChrome(row,row.content);
 }
 async function save(publish=false) {
+  if(recorder || requestingMic || state.audioPending){toast(t("Finish recording and uploading before saving."));return;}
   if(state.busy || !validEditor()) return;
   const data=readEditor();
   if(publish&&!data.words.length) { $('editor-error').textContent=t("Add at least one word before publishing."); return; }
@@ -299,7 +317,7 @@ async function mutateLesson(action) {
     state.dirty=false; $('editor').close(); toast(action==='delete'?t("Lesson deleted."):t("Lesson moved back to draft.")); await refresh();
   } catch(error) { $('editor-error').textContent=t(error.message); } finally { busy(false); }
 }
-function closeEditor() { if(state.busy) return; if(state.dirty&&!confirm(t("Discard your unsaved changes?"))) return; state.dirty=false; $('editor').close(); }
+function closeEditor() { if(state.busy) return; if(state.dirty&&!confirm(t("Discard your unsaved changes?"))) return; recorder?.stop(); player?.pause(); state.dirty=false; $('editor').close(); }
 function preview() {
   const c=readEditor(), l=lang(c.language);
   $('preview-content').innerHTML=`<div class="preview-title"><span class="big">${esc(c.icon)}</span><p class="eyebrow">${esc(l['name_'+StudioI18n.locale]||l.name_en)} · ${t('Unit {n}',{n:c.position})}</p><h2>${esc(c.title)||t("Untitled lesson")}</h2>${c.titleEn?`<p class="muted">${esc(c.titleEn)}</p>`:''}</div>${c.tip?`<p class="preview-note">${esc(c.tip)}</p>`:''}<h3>${t("Words")}</h3>${c.words.length?`<div class="preview-list">${c.words.map(w=>`<div><b>${esc(w.term)}</b><span>${esc(w.fr)}${w.en?' · '+esc(w.en):''}</span>${w.example?`<em>${esc(w.example)}${w.exampleFr?' — '+esc(w.exampleFr):''}</em>`:''}</div>`).join('')}</div>`:`<p class="muted">${t("No words yet.")}</p>`}${c.sentences.length?`<h3>${t("Sentences")}</h3><div class="preview-list">${c.sentences.map(s=>`<div><b>${esc(s.fr)}</b><span>${esc(s.answer)}</span></div>`).join('')}</div>`:''}`;

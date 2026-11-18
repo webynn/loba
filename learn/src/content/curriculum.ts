@@ -16,7 +16,7 @@ function toWord(v: unknown): Word | null {
   const o = v as Record<string, unknown>
   const term = str(o.term), fr = str(o.fr)
   const audio = typeof o.audio === 'string' && /^[0-9a-f-]{36}$/.test(o.audio) ? o.audio : undefined
-  return term && fr ? { term, fr, en: str(o.en), ...(audio ? { audio } : {}) } : null
+  return term && fr ? { term, fr, en: str(o.en), ...(audio ? { audio } : {}), example: str(o.example), exampleAudio: typeof o.exampleAudio === 'string' && /^[0-9a-f-]{36}$/.test(o.exampleAudio) ? o.exampleAudio : undefined } : null
 }
 
 function toSentence(v: unknown): Sentence | null {
@@ -24,7 +24,8 @@ function toSentence(v: unknown): Sentence | null {
   const o = v as Record<string, unknown>
   const answer = str(o.answer), fr = str(o.fr)
   const distractors = Array.isArray(o.distractors) ? o.distractors.map((d) => str(d, 60)).filter(Boolean) : []
-  return answer && fr ? { fr, en: str(o.en), answer, distractors } : null
+  const audio = typeof o.audio === 'string' && /^[0-9a-f-]{36}$/.test(o.audio) ? o.audio : undefined
+  return answer && fr ? { audio, fr, en: str(o.en), answer, distractors } : null
 }
 
 /** Validates one lesson's content. Anything malformed is dropped, never rendered. */

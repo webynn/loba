@@ -1,6 +1,14 @@
 // Studio UI only: lesson content and input values are never translated.
 const StudioI18n = (() => {
   const messages = {
+  "Pronunciation": "Prononciation",
+  "Example pronunciation": "Prononciation de l’exemple",
+  "Clean audio": "Améliorer le son",
+  "Restore original": "Restaurer l’original",
+  "No recording yet": "Pas encore d’enregistrement",
+  "Volume balanced and low rumble reduced. Listen before publishing.": "Volume équilibré et graves parasites réduits. Écoutez avant de publier.",
+  "Keep voice recordings under 45 seconds.": "Limitez les enregistrements à 45 secondes.",
+  "Finish recording and uploading before saving.": "Terminez l’enregistrement et l’envoi avant de sauvegarder.",
   "Music": "Musique",
   "Childhood songs, ready for a new generation.": "Les chansons d’enfance, pour une nouvelle génération.",
   "The sounds of home": "Les sons de chez nous",

@@ -12,7 +12,7 @@ import type { Answer } from './answer'
 
 type ChoiceExercise = Extract<Exercise, { kind: 'meaning' | 'term' | 'listen' }>
 
-export function SpeakButton({ word, big }: { word: Word; big?: boolean }) {
+export function SpeakButton({ word, big }: { word: Pick<Word, 'audio'>; big?: boolean }) {
   const { t } = useT()
   const [ring, setRing] = useState(0)
   if (!hasVoice(word)) return null
@@ -32,7 +32,7 @@ export function Choice({ ex, answer, onAnswer, locked }: { ex: ChoiceExercise; a
   const label = (w: Word) => (ex.kind === 'meaning' ? meaning(w) : w.term)
 
   useEffect(() => {
-    if (ex.kind !== 'term') playWord(ex.word)
+    if (ex.kind !== 'term') playWord(ex.word, false, true)
   }, [ex])
 
   useEffect(() => {

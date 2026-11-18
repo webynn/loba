@@ -6,12 +6,12 @@ import { game } from '../game/store'
  * Pronunciation comes only from recordings made by teachers in Loba Studio.
  * A word without a recording is simply silent — there is no synthetic voice.
  */
-export const hasVoice = (w: Word) => !!w.audio
+export const hasVoice = (w: Pick<Word, 'audio'>) => !!w.audio
 
 let current: HTMLAudioElement | null = null
 
-export function playWord(w: Word, slow = false) {
-  if (!w.audio || !game.get().voice) return
+export function playWord(w: Pick<Word, 'audio'>, slow = false, automatic = false) {
+  if (!w.audio || (automatic && !game.get().voice)) return
   try {
     current?.pause()
     musicVoice(true)

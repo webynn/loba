@@ -8,9 +8,12 @@ export interface Word {
   en: string
   /** Id of a teacher's recording, played from /api/v1/audio/:id. */
   audio?: string
+  example?: string
+  exampleAudio?: string
 }
 
 export interface Sentence {
+  audio?: string
   fr: string
   en: string
   answer: string

@@ -355,3 +355,17 @@ test('music edits require a session, valid metadata and same-origin writes',asyn
   assert.equal((await invoke(app,{url,method:'PUT',headers,data})).status,200);assert.deepEqual(saved,data);
   assert.equal((await invoke(app,{url:'/api/admin/music/upload',method:'POST',headers:{...headers,'content-type':'audio/mpeg'},raw:'not audio'})).status,415);
 });
+
+test('phrase and example recordings retain original audio references through validation',()=>{
+  const id='12345678-1234-4234-8234-123456789abc', original='22345678-1234-4234-8234-123456789abc';
+  const input={...lesson, words:[{...lesson.words[0],audio:id,audioOriginal:original,example:'Mbote na yo',exampleAudio:id,exampleAudioOriginal:original}],sentences:[{...lesson.sentences[0],audio:id,audioOriginal:original}]};
+  const result=validateLesson(input);
+  assert.equal(result.words[0].exampleAudio,id);
+  assert.equal(result.words[0].exampleAudioOriginal,original);
+  assert.equal(result.words[0].audioOriginal,original);
+  assert.equal(result.sentences[0].audio,id);
+  assert.equal(result.sentences[0].audioOriginal,original);
+  assert.throws(()=>validateLesson({...input,sentences:[{...input.sentences[0],audio:'https://bad.example/audio'}]}),{status:400});
+  const empty=validateLesson({...input,words:[{...input.words[0],example:''}]});
+  assert.equal(empty.words[0].exampleAudio,undefined);
+});

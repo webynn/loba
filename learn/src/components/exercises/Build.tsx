@@ -3,6 +3,7 @@ import { sfx } from '../../audio/sfx'
 import { calm } from '../fx'
 import type { Exercise } from '../../game/exercises'
 import { useT } from '../../i18n/useT'
+import { SpeakButton } from './Choice'
 import { Loba } from '../Loba'
 import type { Answer } from './answer'
 
@@ -37,7 +38,7 @@ export function Build({ ex, answer, onAnswer, locked }: { ex: Extract<Exercise, 
       </div>
       <div className="speech">
         <Loba mood="think" />
-        <p className="bubble">{meaning(ex.sentence)}</p>
+        <div className="bubble"><SpeakButton word={ex.sentence} />{meaning(ex.sentence)}</div>
       </div>
       <div className="answer-line" aria-live="polite">
         {picked.map((i, pos) => (

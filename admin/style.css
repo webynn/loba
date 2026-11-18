@@ -468,3 +468,49 @@ body:has(#workspace:not([hidden])) > .studio-language { display: none; }
 .music-card-actions { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
 .music-card-actions .field { width:68px; }
 .music-card-actions .btn { margin-left:auto; }
+
+/* Lesson workshop: comfortably sized, touch-friendly content cards. */
+#editor { width: min(1120px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); border-radius: 26px; }
+#editor .sheet-body { background: #faf8f3; }
+#editor .rows-head { display: none; }
+#word-rows, #sentence-rows { display: grid; gap: 20px; }
+#editor .word-row, #editor .sentence-row { background: white; border: 2px solid var(--line); border-radius: 22px; padding: 20px; box-shadow: 0 5px 0 #e9e4da; }
+#editor .word-row { display: flex; flex-direction: column; align-items: stretch; gap: 16px; }
+.entry-head { display:flex; align-items:center; gap:10px; }
+.entry-head .remove { margin-left:auto; }
+#editor .idx { display:grid; place-items:center; background:#e5f3ff; color:#126eaf; border-radius:12px; min-width:32px; height:32px; padding:0; font-weight:800; }
+.entry-fields { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:12px; }
+#editor .example { display:grid; grid-template-columns:1.2fr 1fr 1fr; background:#f8f6ff; padding:16px; border-radius:16px; gap:12px; }
+#editor .example.off { opacity:1; }
+#editor .example input { font-style:normal; padding:12px; font-size:16px; }
+#editor input { min-width:0; font-size:16px; }
+#editor .game-inclusion { display:flex; align-items:center; gap:10px; font-size:14px; }
+#editor .game-inclusion input { width:20px; height:20px; min-height:20px; flex:0 0 20px; accent-color:#168cce; }
+.recording-panel { grid-column:1/-1; background:#eef7fd; border:1px solid #d6eaf7; border-radius:14px; padding:12px; }
+.recording-caption { display:block; color:var(--ink); font-size:12px; font-weight:750; margin-bottom:8px; }
+#editor .audio { display:flex; flex-wrap:wrap; gap:8px; }
+.recording-action { display:inline-flex; gap:7px; align-items:center; justify-content:center; min-height:44px; border:1px solid #c7deed; background:white; color:#146496; border-radius:12px; padding:8px 12px; font-size:13px; font-weight:650; }
+.recording-action svg { width:18px; height:18px; }
+.recording-action.recording { background:#fff0ee; color:#c23636; border-color:#c23636; }
+.recording-action[hidden] { display:none; }
+#editor .audio-msg { margin:8px 0 0; }
+#editor .sentence-row .icon-btn { margin-top:0; min-width:44px; min-height:44px; }
+#editor .sentence-row { grid-template-columns:32px minmax(0,1fr) 44px; gap:12px; }
+#editor .sheet-foot { flex-wrap:wrap; }
+#editor .sheet-foot > div { flex-wrap:wrap; }
+@media(max-width:700px) {
+  #editor { width:100%; max-width:100%; height:100dvh; max-height:100dvh; margin:0; border-radius:0; }
+  #editor .sheet-head, #editor .sheet-body, #editor .sheet-foot { padding:14px; }
+  #editor .sheet-body { padding-bottom:24px; }
+  #editor .entry-fields, #editor .example, #editor .sentence-fields { grid-template-columns:minmax(0,1fr); }
+  #editor .word-row, #editor .sentence-row { padding:14px; }
+  #editor .sentence-row { grid-template-columns:32px 1fr 44px; }
+  #editor .sentence-fields { grid-column:1/-1; grid-row:2; }
+  #editor .sentence-row > .remove { grid-column:3; grid-row:1; }
+  #editor .sheet-foot { gap:10px; padding-bottom:max(14px,env(safe-area-inset-bottom)); }
+  #editor .sheet-foot > div { width:100%; display:flex; }
+  #editor .sheet-foot button { flex:1; min-height:44px; font-size:13px; padding:10px; }
+  #editor .section-row { flex-direction:column; align-items:stretch; }
+  #editor .sheet-tabs { overflow-x:auto; flex-shrink:0; }
+  #editor .recording-action { flex:1 1 auto; }
+}
