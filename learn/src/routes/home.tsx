@@ -10,6 +10,8 @@ import { useT } from '../i18n/useT'
 import { useCurriculum, useLanguages } from '../hooks'
 import type { Taste } from '../landing/copy'
 import { useGreetings, useStartLink } from '../landing/useStart'
+import appStoreEn from '../landing/badges/app-store-en.svg'
+import appStoreFr from '../landing/badges/app-store-fr.svg'
 import { HeroScene } from '../landing/HeroScene'
 import { MiniLesson } from '../landing/MiniLesson'
 import { ChatPhone, MicDemo, RumbaDrum, StreakDemo } from '../landing/Showcase'
@@ -91,6 +93,10 @@ function Home() {
                 ? <Link to="/" className="btn outline">{t('continue')}</Link>
                 : <a href="#play" className="btn outline">{t('tryLesson')}</a>}
             </div>
+            <a className="lp-app-store" href="https://apps.apple.com/app/congolingo/id6836552772">
+              <img src={ui === 'fr' ? appStoreFr : appStoreEn}
+                alt={ui === 'fr' ? 'Télécharger CongoLingo dans l’App Store' : 'Download CongoLingo on the App Store'} />
+            </a>
           </div>
         </section>
 
