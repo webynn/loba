@@ -1,0 +1,7 @@
+:root { font: 1rem/1.5 system-ui, sans-serif; color: #293b30; background: #fff8e9 }
+main { max-width: 25rem; margin: 8vh auto; padding: 1.5rem }
+header, label { font-weight: 650 }
+input, button { display: block; box-sizing: border-box; width: 100%; margin: .4rem 0 1rem; padding: .85rem; border: 1px solid #7e877d; border-radius: .65rem; font: inherit }
+button { background: #21563f; color: white; font-weight: 700; cursor: pointer }
+a { color: #21563f }
+[hidden] { display: none }

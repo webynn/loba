@@ -136,3 +136,7 @@ CREATE TABLE IF NOT EXISTS tester_feedback_images (
  mime TEXT NOT NULL, data BYTEA NOT NULL CHECK(octet_length(data) <= 2097152), position INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS tester_feedback_images_parent ON tester_feedback_images(feedback_id);
+
+ALTER TABLE learners ADD COLUMN IF NOT EXISTS reset_token_hash TEXT;
+ALTER TABLE learners ADD COLUMN IF NOT EXISTS reset_expires_at TIMESTAMPTZ;
+CREATE UNIQUE INDEX IF NOT EXISTS learner_reset_token ON learners(reset_token_hash) WHERE reset_token_hash IS NOT NULL;

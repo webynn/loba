@@ -213,6 +213,27 @@ export class Store {
     } catch (error) { await db.query('ROLLBACK'); throw error; }
     finally { db.release(); }
   }
+  async issuePasswordReset(email, tokenHash) {
+    const result = await this.pool.query(`UPDATE learners SET reset_token_hash=$2, reset_expires_at=now()+interval '30 minutes'
+      WHERE email=$1 AND password_hash IS NOT NULL`, [email, tokenHash]);
+    return result.rowCount === 1;
+  }
+  async resetPassword(tokenHash, password) {
+    const db = await this.pool.connect();
+    try {
+      await db.query('BEGIN');
+      const {rows} = await db.query('SELECT id FROM learners WHERE reset_token_hash=$1 AND reset_expires_at>now() FOR UPDATE', [tokenHash]);
+      if (!rows.length) throw fail(400, 'This reset link is invalid or expired.');
+      const id = rows[0].id;
+      await db.query('UPDATE learners SET password_hash=$2,reset_token_hash=NULL,reset_expires_at=NULL WHERE id=$1', [id, await hashPassword(password)]);
+      await db.query('DELETE FROM learner_sessions WHERE learner_id=$1', [id]);
+      await db.query('DELETE FROM learner_app_handoffs WHERE learner_id=$1', [id]);
+      await db.query('COMMIT');
+    } catch (error) {
+      await db.query('ROLLBACK');
+      throw error;
+    } finally { db.release(); }
+  }
   async learner(email) { return (await this.pool.query('SELECT * FROM learners WHERE email=$1', [email])).rows[0]; }
   async learnerById(id) { return (await this.pool.query('SELECT * FROM learners WHERE id=$1', [id])).rows[0]; }
   async createLearnerSession(tokenHash, learnerId, google = false) { await this.pool.query("INSERT INTO learner_sessions(token_hash,learner_id,expires_at,google_auth_at) VALUES($1,$2,now()+interval '60 days',CASE WHEN $3 THEN now() ELSE NULL END)", [tokenHash, learnerId, google]); }

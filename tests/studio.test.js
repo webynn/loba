@@ -448,3 +448,47 @@ test('feedback and images save atomically and roll back when an attachment fails
   assert.equal(queries.at(-1),rejectImage?'ROLLBACK':'COMMIT');assert.equal(released,true);
  }
 });
+
+test('learner recovery returns the same acknowledgement and delivers a single-use email secret outside the response', async () => {
+  const store = fakeStore();
+  let currentHash;
+  const inbox = [];
+  store.issuePasswordReset = async (email, hash) => {
+    if (email !== 'learner@example.com') return false;
+    currentHash = hash;
+    return true;
+  };
+  store.resetPassword = async hash => {
+    if (hash !== currentHash) throw fail(400, 'Invalid link');
+    currentHash = null;
+  };
+  const app = createApp(store, {origin, sendReset: async (email, link) => inbox.push({email, link})});
+  const post = (path, data) => invoke(app, {url:'/api/learn/' + path, method:'POST', headers:{origin, 'content-type':'application/json'}, data});
+  const known = await post('forgot-password', {email:' Learner@example.com ', lang:'fr'});
+  const unknown = await post('forgot-password', {email:'other@example.com'});
+  assert.equal(known.status, 202);
+  assert.equal(unknown.raw, known.raw);
+  assert.equal(inbox.length, 1);
+  const url = new URL(inbox[0].link);
+  const token = url.hash.slice(1);
+  assert.equal(url.origin, origin);
+  assert.equal(url.searchParams.get('lang'), 'fr');
+  assert.equal(hashToken(token), currentHash);
+  assert.equal((await post('reset-password', {token, password:'short'})).status, 400);
+  assert.equal((await post('reset-password', {token, password:'replacement-password'})).status, 200);
+  assert.equal((await post('reset-password', {token, password:'another-password'})).status, 400);
+  store.allowed = false;
+  assert.equal((await post('forgot-password', {email:'learner@example.com'})).status, 429);
+});
+
+test('public password reset links load the recovery form and both assets', async () => {
+  const app = createApp(fakeStore(), {origin});
+  for (const url of ['/reset-password', '/reset-password?lang=fr', '/reset-password/']) {
+    const page = await invoke(app, {url});
+    assert.equal(page.status, 200);
+    assert.match(page.raw, /src="\/recovery\/form.js"/);
+  }
+  for (const url of ['/recovery/form.js', '/recovery/style.css']) {
+    assert.equal((await invoke(app, {url})).status, 200);
+  }
+});

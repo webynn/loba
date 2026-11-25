@@ -17,7 +17,7 @@ export function AuthForm({ mode, onModeChange, onDone }: {
   onModeChange: (mode: AuthMode) => void
   onDone: (result: { restored: boolean }) => void
 }) {
-  const { t } = useT()
+  const { t, ui } = useT()
   const qc = useQueryClient()
   const [name, setName] = useState(() => game.get().name)
   const [email, setEmail] = useState('')
@@ -82,6 +82,7 @@ export function AuthForm({ mode, onModeChange, onDone }: {
         {mode === 'signup' && <small>{t('passwordHint')}</small>}
       </label>
 
+      {mode === 'login' && <a href={'/reset-password?lang=' + ui}>{ui === 'fr' ? 'Mot de passe oublié ?' : 'Forgot password?'}</a>}
       {error && <p className="auth-error" role="alert">{error}</p>}
 
       <button className="btn green block" type="submit" disabled={busy}>

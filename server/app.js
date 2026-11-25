@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { hashToken, verifyPassword, validateLesson, validateLanguage, validateLearner, sniffAudio, AUDIO_MAX_BYTES, LANGUAGE_CODE, fail } from './security.js';
+import { hashToken, verifyPassword, validateLesson, validateLanguage, validateLearner, LEARNER_PASSWORD_MIN, sniffAudio, AUDIO_MAX_BYTES, LANGUAGE_CODE, fail } from './security.js';
 
 async function body(req, max = 200_000) {
   let size = 0; const chunks = [];
@@ -76,7 +76,7 @@ function progressState(value) {
   return value;
 }
 
-export function createApp(store, {origin, production = false, google = null, learnDir = new URL('../learn/dist/', import.meta.url)}) {
+export function createApp(store, {origin, production = false, google = null, sendReset = null, learnDir = new URL('../learn/dist/', import.meta.url)}) {
   // Explicit production domains; never trust arbitrary Host or forwarded headers.
   const allowedOrigins = new Set([origin, ...(production ? ['https://congolingo.com', 'https://www.congolingo.com', 'https://studio.congolingo.com'] : [])]);
   const cookieName = production ? '__Host-loba_session' : 'loba_session';
@@ -243,6 +243,31 @@ export function createApp(store, {origin, production = false, google = null, lea
             if (!account) throw fail(401, 'Google sign-in failed or expired. Please try again.');
             await startLearnerSession(res, account.id, true);
             return json(200, {learner:publicLearner(account), progress:await store.progress(account.id)});
+          }
+          if (path === '/api/learn/forgot-password' && method === 'POST') {
+            if (!sendReset) throw fail(503, 'Password recovery is temporarily unavailable.');
+            const input = await body(req, 4096);
+            const email = typeof input?.email === 'string' ? input.email.trim().toLowerCase() : '';
+            if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw fail(400, 'Enter a valid email.');
+            if (!await store.loginAllowed(hashToken('reset-ip:' + clientAddress(req)))) throw fail(429, 'Try again in 15 minutes.');
+            if (await store.loginAllowed(hashToken('reset-email:' + email))) {
+              const token = randomBytes(32).toString('hex');
+              if (await store.issuePasswordReset(email, hashToken(token))) {
+                const french = input.lang === 'fr';
+                const link = origin + '/reset-password?lang=' + (french ? 'fr' : 'en') + '#' + token;
+                // Respond independently of mail delivery so account existence is private.
+                void sendReset(email, link, french).catch(() => console.error('Password reset email delivery failed'));
+              }
+            }
+            return json(202, {ok:true});
+          }
+          if (path === '/api/learn/reset-password' && method === 'POST') {
+            const input = await body(req, 4096);
+            if (typeof input?.token !== 'string' || !/^[a-f0-9]{64}$/.test(input.token) ||
+                typeof input.password !== 'string' || input.password.length < LEARNER_PASSWORD_MIN || input.password.length > 256)
+              throw fail(400, 'Check your reset link and password.');
+            await store.resetPassword(hashToken(input.token), input.password);
+            return json(200, {ok:true});
           }
           if (path === '/api/learn/signup' && method === 'POST') {
             const input = await body(req, PROGRESS_MAX_BYTES);
@@ -418,7 +443,7 @@ export function createApp(store, {origin, production = false, google = null, lea
         res.writeHead(302, {Location: studioHost ? '/studio' : '/learn/'}); return res.end();
       }
       if (path === '/learn' || path.startsWith('/learn/')) return await serveLearn(res, path, method, learnDir);
-      const files = {'/support':'../mobile/support.html','/support/':'../mobile/support.html','/privacy':'../mobile/privacy.html','/privacy/':'../mobile/privacy.html','/feedback':'../feedback/index.html','/feedback/':'../feedback/index.html','/feedback/app.js':'../feedback/app.js','/feedback/style.css':'../feedback/style.css','/creators':'../creators/index.html','/creators/':'../creators/index.html','/creators/app.js':'../creators/app.js','/creators/style.css':'../creators/style.css','/testers':'../testers/index.html','/testers/':'../testers/index.html','/testers/app.js':'../testers/app.js','/testers/style.css':'../testers/style.css','/studio':'../admin/index.html','/studio/':'../admin/index.html','/admin':'../admin/index.html','/admin/':'../admin/index.html','/admin/i18n.js':'../admin/i18n.js','/admin/audio-cleanup.js':'../admin/audio-cleanup.js','/admin/app.js':'../admin/app.js','/admin/style.css':'../admin/style.css','/privacy.html':'../privacy.html','/manifest.webmanifest':'../manifest.webmanifest','/icons/icon-192.png':'../icons/icon-192.png','/icons/icon-512.png':'../icons/icon-512.png','/icons/icon-maskable-512.png':'../icons/icon-maskable-512.png','/icons/apple-touch-icon.png':'../icons/apple-touch-icon.png'};
+      const files = {'/reset-password':'../recovery/index.html','/reset-password/':'../recovery/index.html','/recovery/form.js':'../recovery/form.js','/recovery/style.css':'../recovery/style.css','/support':'../mobile/support.html','/support/':'../mobile/support.html','/privacy':'../mobile/privacy.html','/privacy/':'../mobile/privacy.html','/feedback':'../feedback/index.html','/feedback/':'../feedback/index.html','/feedback/app.js':'../feedback/app.js','/feedback/style.css':'../feedback/style.css','/creators':'../creators/index.html','/creators/':'../creators/index.html','/creators/app.js':'../creators/app.js','/creators/style.css':'../creators/style.css','/testers':'../testers/index.html','/testers/':'../testers/index.html','/testers/app.js':'../testers/app.js','/testers/style.css':'../testers/style.css','/studio':'../admin/index.html','/studio/':'../admin/index.html','/admin':'../admin/index.html','/admin/':'../admin/index.html','/admin/i18n.js':'../admin/i18n.js','/admin/audio-cleanup.js':'../admin/audio-cleanup.js','/admin/app.js':'../admin/app.js','/admin/style.css':'../admin/style.css','/privacy.html':'../privacy.html','/manifest.webmanifest':'../manifest.webmanifest','/icons/icon-192.png':'../icons/icon-192.png','/icons/icon-512.png':'../icons/icon-512.png','/icons/icon-maskable-512.png':'../icons/icon-maskable-512.png','/icons/apple-touch-icon.png':'../icons/apple-touch-icon.png'};
       const file = path === '/signup' || path === '/signup/' ? '../admin/index.html' : files[path]; if (!file) throw fail(404,'Page not found.');
       res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
       const ext = file.split('.').at(-1);

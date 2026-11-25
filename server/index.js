@@ -3,6 +3,8 @@ import pg from 'pg';
 import { Store } from './store.js';
 import { createApp } from './app.js';
 import { createGoogleAuth } from './google.js';
+import { resetMailer } from './reset-mail.js';
+const sendReset = resetMailer(process.env.RESEND_API_KEY, process.env.RESEND_FROM || process.env.PASSWORD_RESET_FROM);
 const production = process.env.NODE_ENV === 'production';
 const origin = process.env.APP_ORIGIN || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:3000');
 if (!process.env.DATABASE_URL) throw new Error('Set DATABASE_URL before starting Loba Studio. See STUDIO.md.');
@@ -12,6 +14,6 @@ pool.on('error', error => console.error('Database pool error:',error.code || err
 const store = new Store(pool);
 await store.initialize({email:process.env.ADMIN_EMAIL,password:process.env.ADMIN_PASSWORD});
 const google = createGoogleAuth({clientId:process.env.GOOGLE_CLIENT_ID, clientSecret:process.env.GOOGLE_CLIENT_SECRET, redirectUri:process.env.GOOGLE_REDIRECT_URI});
-const server = http.createServer({requestTimeout:30000,headersTimeout:15000},createApp(store,{origin,production,google}));
+const server = http.createServer({requestTimeout:30000,headersTimeout:15000},createApp(store,{origin,production,google,sendReset}));
 server.listen(Number(process.env.PORT || 3000),'0.0.0.0',()=>console.log(`Loba Studio listening on port ${process.env.PORT || 3000}`));
 for (const signal of ['SIGTERM','SIGINT']) process.on(signal,()=>{server.close(async()=>{await pool.end();process.exit(0)});setTimeout(()=>process.exit(1),10000).unref()});
