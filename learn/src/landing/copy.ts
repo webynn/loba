@@ -52,7 +52,7 @@ export function quizFromUnit(unit: Unit, ui: UiLang): Q[] {
 
 export type Greeting = { text: string; lang: Taste; fr: string; en: string }
 
-/** Greetings Loba cycles through when tapped. */
+/** Greetings Kapi cycles through when tapped. */
 export const GREETINGS: Greeting[] = [
   { text: 'Mbote !', lang: 'ln', fr: 'Bonjour', en: 'Hello' },
   { text: 'Jambo !', lang: 'sw', fr: 'Bonjour', en: 'Hello' },
@@ -81,9 +81,9 @@ const fr = {
   start: 'Commencer',
   tryLesson: 'Essayer une leçon',
   continue: 'Continuer mon parcours',
-  tapLoba: 'Touche Loba',
+  tapLoba: 'Touche Kapi',
   playTitle: 'Ta première leçon, ici.',
-  playText: 'Trois questions pour goûter à Loba. Crée ton compte pour continuer.',
+  playText: 'Trois questions pour découvrir CongoLingo. Crée ton compte pour continuer.',
   signIn: 'Se connecter',
   langsLabel: 'Langues',
   qMeaning: 'Que veut dire ce mot ?',
@@ -102,8 +102,8 @@ const fr = {
   chatHint: 'Touche un message pour le traduire',
   mamaName: 'Maman',
   online: 'en ligne',
-  speakTitle: 'Parle. Loba t’écoute.',
-  speakText: 'Écoute chaque mot, ralentis-le, puis réponds au micro. Loba vérifie ta prononciation, et tu oses enfin répondre.',
+  speakTitle: 'Parle. Kapi t’écoute.',
+  speakText: 'Écoute chaque mot, ralentis-le, puis réponds au micro. Kapi vérifie ta prononciation, et tu oses enfin répondre.',
   speakTap: 'Touche le micro',
   speakGood: 'Malamu mingi !',
   streakTitle: 'Un petit peu, chaque jour.',
@@ -135,7 +135,7 @@ const en: typeof fr = {
   start: 'Get started',
   tryLesson: 'Try a lesson',
   continue: 'Continue my path',
-  tapLoba: 'Tap Loba',
+  tapLoba: 'Tap Kapi',
   playTitle: 'Your first lesson, right here.',
   playText: 'Three questions to get a taste. Create your account to keep going.',
   signIn: 'Sign in',
@@ -156,8 +156,8 @@ const en: typeof fr = {
   chatHint: 'Tap a message to translate it',
   mamaName: 'Mum',
   online: 'online',
-  speakTitle: 'Speak. Loba is listening.',
-  speakText: 'Hear every word, slow it down, then answer into the mic. Loba checks your pronunciation, so you finally dare to reply.',
+  speakTitle: 'Speak. Kapi is listening.',
+  speakText: 'Hear every word, slow it down, then answer into the mic. Kapi checks your pronunciation, so you finally dare to reply.',
   speakTap: 'Tap the mic',
   speakGood: 'Malamu mingi!',
   streakTitle: 'A little, every day.',

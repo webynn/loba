@@ -5,3 +5,7 @@ input, button { display: block; box-sizing: border-box; width: 100%; margin: .4r
 button { background: #21563f; color: white; font-weight: 700; cursor: pointer }
 a { color: #21563f }
 [hidden] { display: none }
+main { background: #fffdf8; border: 2px solid #eadcc4; border-radius: 1.5rem; box-shadow: 0 5px 0 #eadcc4; margin-inline: auto; width: min(92%, 28rem); box-sizing: border-box }
+header { display: flex; align-items: center; gap: .65rem; color: #21563f; font-size: 1.25rem }
+header img { border-radius: .8rem }
+button { box-shadow: 0 3px 0 #123c2c }

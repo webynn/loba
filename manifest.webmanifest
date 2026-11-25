@@ -1,6 +1,6 @@
 {
-  "name": "Loba — Lingala & Swahili",
-  "short_name": "Loba",
+  "name": "CongoLingo — Lingala & Swahili",
+  "short_name": "CongoLingo",
   "description": "Apprends le lingala et le swahili du Congo, 5 minutes par jour. Learn Congolese Lingala and Swahili, 5 minutes a day.",
   "lang": "fr",
   "start_url": "./?source=pwa",
@@ -11,8 +11,8 @@
   "theme_color": "#1E8FE1",
   "categories": ["education", "games"],
   "icons": [
-    { "src": "icons/icon-192.png?v=parrot-1", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png?v=parrot-1", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-maskable-512.png?v=parrot-1", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/icon-192.png?v=kapi-1", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png?v=kapi-1", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png?v=kapi-1", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

@@ -8,7 +8,7 @@ async function body(req, max = 200_000) {
   try { return JSON.parse(Buffer.concat(chunks).toString()); } catch { throw fail(400, 'Invalid JSON request.'); }
 }
 const LEARN_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://api.mapbox.com; font-src 'self'; connect-src 'self'; media-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
-const LEARN_MIME = {js:'text/javascript; charset=utf-8',css:'text/css; charset=utf-8',json:'application/json; charset=utf-8',woff2:'font/woff2',woff:'font/woff',png:'image/png',svg:'image/svg+xml',webmanifest:'application/manifest+json; charset=utf-8'};
+const LEARN_MIME = {js:'text/javascript; charset=utf-8',css:'text/css; charset=utf-8',json:'application/json; charset=utf-8',woff2:'font/woff2',woff:'font/woff',jpg:'image/jpeg',webp:'image/webp',png:'image/png',svg:'image/svg+xml',webmanifest:'application/manifest+json; charset=utf-8'};
 
 // The learner app (learn/) is a built single-page app. Only hashed files in its assets
 // folder and its manifest are served; every other extension-less /learn path gets index.html.

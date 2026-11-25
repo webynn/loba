@@ -33,9 +33,9 @@ function AccountPage() {
     <div className="home acct">
       <header className="lp-head scrolled">
         <div className="lp-wrap lp-head-inner">
-          <Link to="/home" className="lp-brand" aria-label="Loba">
+          <Link to="/home" className="lp-brand" aria-label="CongoLingo">
             <Loba mood="happy" />
-            <span className="brand-word">loba</span>
+            <span className="brand-word">CongoLingo</span>
           </Link>
           <div className="segmented" role="group" aria-label={t('interfaceLang')}>
             {(['fr', 'en'] as const).map((code) => (

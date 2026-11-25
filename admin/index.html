@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ffffff">
-  <meta name="description" content="Loba Studio: create and publish lessons for Congolese languages.">
-  <title>Loba Studio</title>
-  <link rel="icon" href="/icons/icon-192.png?v=parrot-1">
+  <meta name="description" content="CongoLingo Studio: create and publish lessons for Congolese languages.">
+  <title>CongoLingo Studio</title>
+  <link rel="icon" href="/icons/icon-192.png?v=kapi-1">
   <link rel="stylesheet" href="/admin/style.css">
   <script src="/admin/i18n.js" defer></script>
   <script src="/admin/audio-cleanup.js" defer></script>
@@ -40,14 +40,14 @@
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></symbol>
   </svg>
 
-  <div id="loading" class="loading" role="status"><img src="/icons/icon-192.png?v=parrot-1" alt="" width="48" height="48"><p><span data-i18n="Opening Loba Studio…">Ouverture de Loba Studio…</span></p></div>
+  <div id="loading" class="loading" role="status"><img src="/icons/icon-192.png?v=kapi-1" alt="" width="48" height="48"><p><span data-i18n="Opening CongoLingo Studio…">Ouverture de CongoLingo Studio…</span></p></div>
 
   <section id="login" class="auth" hidden>
     <div class="auth-card">
-      <div class="auth-brand"><img src="/icons/icon-192.png?v=parrot-1" alt="" width="40" height="40"><span>Loba <b>Studio</b></span></div>
+      <div class="auth-brand"><img src="/icons/icon-192.png?v=kapi-1" alt="" width="40" height="40"><span>CongoLingo <b>Studio</b></span></div>
       <form id="login-form" class="auth-form">
         <h1><span data-i18n="Sign in">Se connecter</span></h1>
-        <p class="muted"><span data-i18n="Create, review and publish lessons for every Loba language.">Créez, révisez et publiez des leçons pour chaque langue de Loba.</span></p>
+        <p class="muted"><span data-i18n="Create, review and publish lessons for every CongoLingo language.">Créez, révisez et publiez des leçons pour chaque langue de CongoLingo.</span></p>
         <label class="field"><span data-i18n="Email">Adresse e-mail</span><input type="email" name="email" autocomplete="username" required maxlength="254"></label>
         <label class="field"><span data-i18n="Password">Mot de passe</span><input type="password" name="password" autocomplete="current-password" required maxlength="256"></label>
         <p id="login-error" class="form-error" role="alert"></p>
@@ -70,7 +70,7 @@
 
   <div id="workspace" class="shell" hidden>
     <aside class="side">
-      <a class="side-brand" href="/studio"><img src="/icons/icon-192.png?v=parrot-1" alt="" width="30" height="30"><span>Loba <b>Studio</b></span></a>
+      <a class="side-brand" href="/studio"><img src="/icons/icon-192.png?v=kapi-1" alt="" width="30" height="30"><span>CongoLingo <b>Studio</b></span></a>
       <nav class="side-nav" aria-label="Studio">
         <button data-view="overview" class="nav-item"><svg><use href="#i-home"/></svg><span><span data-i18n="Overview">Vue d’ensemble</span></span></button>
         <button data-view="lessons" class="nav-item"><svg><use href="#i-book"/></svg><span><span data-i18n="Lessons">Leçons</span></span><small id="nav-count"></small></button>
@@ -102,7 +102,7 @@
       <section id="overview-view" class="view">
         <div class="studio-welcome">
           <span class="welcome-art" aria-hidden="true">🇨🇩</span>
-          <div><span class="eyebrow">Loba · Studio</span><h2 data-i18n="Bring our languages to life.">Faisons vivre nos langues.</h2><p data-i18n="Every lesson, word and story you create helps someone connect with Congo.">Chaque leçon, mot et histoire que vous créez aide quelqu’un à se rapprocher du Congo.</p></div>
+          <div><span class="eyebrow">CongoLingo · Studio</span><h2 data-i18n="Bring our languages to life.">Faisons vivre nos langues.</h2><p data-i18n="Every lesson, word and story you create helps someone connect with Congo.">Chaque leçon, mot et histoire que vous créez aide quelqu’un à se rapprocher du Congo.</p></div>
         </div>
         <div id="stats" class="stats"></div>
         <div class="split">
@@ -169,7 +169,7 @@
       </section>
 
       <section id="activity-view" class="view" hidden>
-        <div class="activity-intro"><div><span class="activity-kicker">LOBA STUDIO</span><h2 data-i18n="Your team’s story">L’histoire de votre équipe</h2><p data-i18n="Every lesson starts with someone sharing what they know.">Chaque leçon commence par un savoir partagé.</p></div><button id="refresh-activity" class="btn" data-i18n="Refresh">Actualiser</button></div>
+        <div class="activity-intro"><div><span class="activity-kicker">CONGOLINGO STUDIO</span><h2 data-i18n="Your team’s story">L’histoire de votre équipe</h2><p data-i18n="Every lesson starts with someone sharing what they know.">Chaque leçon commence par un savoir partagé.</p></div><button id="refresh-activity" class="btn" data-i18n="Refresh">Actualiser</button></div>
         <p id="activity-error" class="form-error" role="alert"></p>
         <section class="panel activity-panel"><div id="activity-list" aria-live="polite"></div><nav class="activity-pagination" aria-label="Activity pages"><button id="activity-prev" class="btn" data-i18n="Previous">Précédent</button><span id="activity-page" role="status"></span><button id="activity-next" class="btn" data-i18n="Next">Suivant</button></nav></section>
       </section>

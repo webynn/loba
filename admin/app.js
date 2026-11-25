@@ -70,7 +70,7 @@ const views = () => ({
   feedback:["Feedback",StudioI18n.locale === "fr" ? "Bugs, idées et retours des testeurs." : "Bugs, ideas and feedback from testers.",null],
   overview:[t("Overview"),t("Your curriculum at a glance."),'lesson'],
   lessons:[t("Lessons"),t("Write, review and publish units for each language."),'lesson'],
-  languages:[t("Languages"),t("Every language Loba teaches, and whether learners can see it."),'language'],
+  languages:[t("Languages"),t("Every language CongoLingo teaches, and whether learners can see it."),'language'],
   learners:[t('Learners'),t('Everyone who created an account in the learner app, and how far they’ve got.'),null],
   accounts:[t("Team"),t("People who can edit lessons in Studio."),null],
   music:[t('Music'),t('Childhood songs, ready for a new generation.'),null],
@@ -88,14 +88,14 @@ function navigate(view) {
   for(const section of document.querySelectorAll('.view')) section.hidden=section.id!==view+'-view';
   document.querySelectorAll('.nav-item').forEach(b=>{ const on=b.dataset.view===view; b.classList.toggle('active',on); if(on)b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
   const [title,subtitle,action]=view==='testers'?['Testeurs · Testers','iOS / Android',null]:views()[view];
-  $('page-title').textContent=title; $('page-subtitle').textContent=subtitle; document.title=`${title} · Loba Studio`;
+  $('page-title').textContent=title; $('page-subtitle').textContent=subtitle; document.title=`${title} · CongoLingo Studio`;
   $('primary-action').hidden=!action; $('primary-label').textContent=action==='language'?t("Add language"):t("New lesson");
   render(); window.scrollTo({top:0});
 }
 
 // ---------- rendering ----------
 function languageSummary() {
-  if(!state.languages.length) return `<div class="empty"><b>${t("No languages yet.")}</b><span>${t("Add the first language Loba should teach.")}</span></div>`;
+  if(!state.languages.length) return `<div class="empty"><b>${t("No languages yet.")}</b><span>${t("Add the first language CongoLingo should teach.")}</span></div>`;
   return state.languages.map(l=>{
     const lessons=state.lessons.filter(x=>x.content.language===l.code), live=lessons.filter(x=>x.published).length;
     const pct=lessons.length?Math.round(live/lessons.length*100):0;

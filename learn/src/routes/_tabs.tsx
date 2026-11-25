@@ -52,10 +52,10 @@ function TabsLayout() {
   const { t } = useT()
   return (
     <div className="shell">
-      <nav className="sidebar" aria-label="Loba">
-        <Link to="/" className="brand" aria-label="Loba">
+      <nav className="sidebar" aria-label="CongoLingo">
+        <Link to="/" className="brand" aria-label="CongoLingo">
           <Loba mood="happy" />
-          <span className="brand-word">loba</span>
+          <span className="brand-word">CongoLingo</span>
         </Link>
         <p className="brand-tag">{t('appTagline')}</p>
         <NavLinks />
@@ -68,7 +68,7 @@ function TabsLayout() {
       <main className="main">
         <Outlet />
       </main>
-      <nav className="tabbar" aria-label="Loba">
+      <nav className="tabbar" aria-label="CongoLingo">
         <NavLinks />
       </nav>
     </div>

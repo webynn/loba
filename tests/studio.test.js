@@ -152,7 +152,7 @@ test('invalid and oversized JSON requests are rejected',async()=>{
   assert.equal((await invoke(app,{...options,raw:' '.repeat(200001)})).status,413);
 });
 test('static serving exposes only allowlisted assets and includes restrictive headers',async()=>{
-  const {app}=authenticated();const index=await invoke(app,{url:'/studio'});assert.equal(index.status,200);assert.match(index.raw,/Loba Studio/);assert.match(index.headers['content-security-policy'],/script-src 'self'/);
+  const {app}=authenticated();const index=await invoke(app,{url:'/studio'});assert.equal(index.status,200);assert.match(index.raw,/CongoLingo Studio/);assert.match(index.headers['content-security-policy'],/script-src 'self'/);
   for(const path of ['/.env','/server/store.js','/data/lessons.json','/../.env','/sw.js'])assert.equal((await invoke(app,{url:path})).status,404,path);
   assert.equal((await invoke(app,{url:'/admin/app.js'})).status,200);
   assert.equal((await invoke(app,{url:'/admin/style.css'})).status,200);
@@ -233,7 +233,7 @@ test('homepage opens learning and Studio routes stay available',async()=>{
     assert.equal(result.status,302);assert.equal(result.headers.location,'/learn/');assert.equal(result.raw,'');
   }
   for(const url of ['/studio','/studio/','/admin','/admin/','/signup']){
-    const result=await invoke(app,{url});assert.equal(result.status,200);assert.match(result.raw,/Loba Studio/);
+    const result=await invoke(app,{url});assert.equal(result.status,200);assert.match(result.raw,/CongoLingo Studio/);
   }
 });
 test('languages are managed in Studio and lessons must use one of them',async()=>{

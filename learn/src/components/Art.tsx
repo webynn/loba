@@ -1,3 +1,4 @@
+import kapiProfile from './kapi-profile.png'
 import type { ReactNode } from 'react'
 
 /**
@@ -161,13 +162,7 @@ const ART = {
       <path d="m24 27 1.800 3.700 4.100.6-3 2.900.7 4.100-3.600-1.900-3.600 1.900.7-4.100-3-2.900 4.100-.6z" fill="#ffc22e" />
     </>
   ),
-  navProfile: (
-    <>
-      <circle cx="24" cy="24" r="20" fill="#98a2b8" /><ellipse cx="16.500" cy="22" rx="8" ry="9" fill="#f6f8fc" /><ellipse cx="31.500" cy="22" rx="8" ry="9" fill="#f6f8fc" />
-      <circle cx="17.500" cy="22" r="3.500" fill="#322e40" /><circle cx="30.500" cy="22" r="3.500" fill="#322e40" />
-      <path d="M24 22c-4 0-6 5-4 8.500 1.500 2.500 4 4 4 4s2.500-1.500 4-4c2-3.500 0-8.500-4-8.500z" fill="#322e40" />
-    </>
-  ),
+  navProfile: <image href={kapiProfile} width="48" height="48" />,
 } satisfies Record<string, ReactNode>
 
 export type ArtName = keyof typeof ART

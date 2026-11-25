@@ -202,7 +202,7 @@ function UnitSection({ unit, index, isCurrent, unlocked, currentRef }: { unit: U
                 <span>{meaning(said.word)}</span>
               </p>
             )}
-            <button className="loba-tap" onClick={speak} aria-label="Loba">
+            <button className="loba-tap" onClick={speak} aria-label="Kapi">
               <Loba mood={said ? 'cheer' : 'wave'} />
             </button>
           </div>

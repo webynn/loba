@@ -67,9 +67,9 @@ function Home() {
     <div className="home">
       <header className={`lp-head ${pastHero ? 'scrolled' : ''}`}>
         <div className="lp-wrap lp-head-inner">
-          <Link to="/home" className="lp-brand" aria-label="Loba">
+          <Link to="/home" className="lp-brand" aria-label="CongoLingo">
             <Loba mood="happy" />
-            <span className="brand-word">loba</span>
+            <span className="brand-word">CongoLingo</span>
           </Link>
           <div className="lp-head-right">
             <Link {...start} className="btn green small lp-head-cta" tabIndex={pastHero ? 0 : -1} aria-hidden={!pastHero}>{t('start')}</Link>
@@ -223,12 +223,12 @@ function Home() {
       <footer className="lp-foot">
         <div className="lp-wrap lp-foot-inner">
           <div className="lp-foot-brand">
-            <span className="brand-word">loba</span>
+            <span className="brand-word">CongoLingo</span>
             <p>{t('footTag')}</p>
           </div>
-          <nav className="lp-foot-links" aria-label="Loba">
+          <nav className="lp-foot-links" aria-label="CongoLingo">
             {languages.map((l) => <button key={l.code} onClick={() => playWith(l.code)}>{langName(l.code)}</button>)}
-            <a href="/creators">{ui === 'fr' ? 'Créer des leçons' : 'Teach with Loba'}</a>
+            <a href="/creators">{ui === 'fr' ? 'Créer des leçons' : 'Teach with CongoLingo'}</a>
             <a href="/testers">{ui === 'fr' ? 'Tester l’application' : 'Become a tester'}</a>
             <a href="/feedback">{ui === 'fr' ? 'Donner mon avis' : 'Feedback'}</a>
             <a href="/privacy.html">{t('privacy')}</a>
