@@ -477,7 +477,16 @@ test('learner recovery returns the same acknowledgement and delivers a single-us
   assert.equal((await post('reset-password', {token, password:'short'})).status, 400);
   assert.equal((await post('reset-password', {token, password:'replacement-password'})).status, 200);
   assert.equal((await post('reset-password', {token, password:'another-password'})).status, 400);
+  const mobile = {email:'learner@example.com', lang:'fr', delivery:'code'};
+  assert.equal((await post('forgot-password', mobile)).raw, known.raw);
+  const code = inbox.at(-1).link;
+  assert.match(code, /^[a-f0-9]{16}$/);
+  const reset = {email:mobile.email, code:code.toUpperCase(), password:'new-password-for-app'};
+  assert.equal((await post('reset-password', {...reset, email:'other@example.com'})).status, 400);
+  assert.equal((await post('reset-password', reset)).status, 200);
+  assert.equal((await post('reset-password', reset)).status, 400);
   store.allowed = false;
+  assert.equal((await post('reset-password', reset)).status, 429);
   assert.equal((await post('forgot-password', {email:'learner@example.com'})).status, 429);
 });
 

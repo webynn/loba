@@ -251,22 +251,33 @@ export function createApp(store, {origin, production = false, google = null, sen
             if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw fail(400, 'Enter a valid email.');
             if (!await store.loginAllowed(hashToken('reset-ip:' + clientAddress(req)))) throw fail(429, 'Try again in 15 minutes.');
             if (await store.loginAllowed(hashToken('reset-email:' + email))) {
-              const token = randomBytes(32).toString('hex');
+              const mobile = input.delivery === 'code';
+              const secret = randomBytes(mobile ? 8 : 32).toString('hex');
+              const token = mobile ? 'mobile-reset:' + email + ':' + secret : secret;
               if (await store.issuePasswordReset(email, hashToken(token))) {
                 const french = input.lang === 'fr';
-                const link = origin + '/reset-password?lang=' + (french ? 'fr' : 'en') + '#' + token;
+                const credential = mobile ? secret : origin + '/reset-password?lang=' + (french ? 'fr' : 'en') + '#' + secret;
                 // Respond independently of mail delivery so account existence is private.
-                void sendReset(email, link, french).catch(() => console.error('Password reset email delivery failed'));
+                void sendReset(email, credential, french, mobile).catch(() => console.error('Password reset email delivery failed'));
               }
             }
             return json(202, {ok:true});
           }
           if (path === '/api/learn/reset-password' && method === 'POST') {
             const input = await body(req, 4096);
-            if (typeof input?.token !== 'string' || !/^[a-f0-9]{64}$/.test(input.token) ||
-                typeof input.password !== 'string' || input.password.length < LEARNER_PASSWORD_MIN || input.password.length > 256)
+            let token = input?.token;
+            if (typeof input?.code === 'string') {
+              const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : '';
+              const code = input.code.trim().toLowerCase();
+              if (!email || !/^[a-f0-9]{16}$/.test(code)) throw fail(400, 'Check your email and reset code.');
+              if (!await store.loginAllowed(hashToken('reset-code-ip:' + clientAddress(req)))) throw fail(429, 'Try again in 15 minutes.');
+              token = 'mobile-reset:' + email + ':' + code;
+            } else if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) {
+              throw fail(400, 'Check your reset link.');
+            }
+            if (typeof input.password !== 'string' || input.password.length < LEARNER_PASSWORD_MIN || input.password.length > 256)
               throw fail(400, 'Check your reset link and password.');
-            await store.resetPassword(hashToken(input.token), input.password);
+            await store.resetPassword(hashToken(token), input.password);
             return json(200, {ok:true});
           }
           if (path === '/api/learn/signup' && method === 'POST') {
